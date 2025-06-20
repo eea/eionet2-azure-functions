@@ -1,0 +1,24 @@
+{
+    "terminal.integrated.profiles.linux": {
+        "BashWithNvm": {
+            "id": "BashWithNvm",
+            "path": "bash",
+            "source": "bash",
+            "args": [
+                "-c",
+                "[ -f .nvmrc ] && { [ -f ./src/scripts/loadNvmAndNode.sh ] && ./src/scripts/loadNvmAndNode.sh || { [ -f /usr/local/bin/loadNvmAndNode.sh ] && loadNvmAndNode.sh || true; }; } || true; exec $SHELL"
+            ],
+            "extensionIdentifier": "linux",
+            "icon": "terminal-bash",
+            "title": "Bash with NVM"
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "BashWithNvm",
+    "azureFunctions.deploySubpath": ".",
+    "azureFunctions.postDeployTask": "npm install (functions)",
+    "azureFunctions.projectLanguage": "JavaScript",
+    "azureFunctions.projectRuntime": "~4",
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.projectLanguageModel": 4,
+    "azureFunctions.preDeployTask": "npm prune (functions)"
+}
