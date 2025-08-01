@@ -32,6 +32,8 @@ async function processFlows(configuration) {
       await saveFlow(configuration, flow);
     }
 
+    console.log('Total number of data flows updated: ' + flowCount);
+
     const flows2Remove = spFlows
       .map((spFlow) => {
         if (
@@ -46,7 +48,7 @@ async function processFlows(configuration) {
       await removeFlow(configuration, flow);
     }
 
-    console.log('Total number of data flows updated: ' + flowCount);
+    console.log('Total number of data flows removed: ' + flows2Remove.length);
   } catch (error) {
     await logging.error(configuration, error, jobName);
     return error;

@@ -10,6 +10,7 @@
   "dependencies": {
     "@azure/functions": "^4.0.0",
     "@azure/identity": "^4.0.0",
+    "date-and-time": "^3.0.0",
     "axios": "^1.6.0"
   },
   "devDependencies": {

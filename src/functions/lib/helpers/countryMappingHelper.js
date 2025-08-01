@@ -1,5 +1,5 @@
-const provider = require('../provider'),
-  auth = require('../auth');
+const { apiGet } = require('../provider'),
+  { apiConfigWithSite } = require('../../lib/graphClient');
 
 async function initialize(configuration) {
   !countryMapping && (await getCountryCodeMappingsList(configuration));
@@ -10,8 +10,8 @@ async function getCountryCodeMappingsList(configuration) {
   if (!countryMapping) {
     countryMapping = {};
 
-    const response = await provider.apiGet(
-      `${auth.apiConfigWithSite.uri}/lists/${configuration.CountryCodeMappingListId}/items?$expand=fields`,
+    const response = await apiGet(
+      `${apiConfigWithSite.uri}/lists/${configuration.CountryCodeMappingListId}/items?$expand=fields`,
     );
     response?.data?.value.forEach(
       (mapping) => (countryMapping[mapping.fields.Title] = mapping.fields.CountryName),
