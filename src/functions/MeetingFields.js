@@ -10,7 +10,7 @@ app.timer('MeetingFields', {
         try {
             const config = await getConfiguration();
             if (config) {
-                await processMeetings(config);
+                await processMeetings(config, context);
             }
         } catch (err) {
             context.error("Error in MeetingFields:", err.message);

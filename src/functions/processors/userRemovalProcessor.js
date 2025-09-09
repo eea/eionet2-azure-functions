@@ -3,13 +3,14 @@ const logging = require('../lib/logging'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   userHelper = require('../lib/helpers/userHelper'),
   userGroupHelper = require('../lib/helpers/userGroupHelper'),
+  mappingHelper = require('../lib/helpers/mappingHelper'),
   tagHelper = require('../lib/helpers/tagHelper'),
   jobName = 'UserRemoval';
 
 //Entry point function for processing users that have signed it in Eionet
 let configuration;
 let users2Delete = [];
-async function processUserRemoval(config) {
+async function processUserRemoval(context, config, applyRemove) {
   configuration = config;
   const filterDate = new Date(
     new Date().setDate(new Date().getDate() - configuration.RemoveNonSignedInUserNoOfDays),
@@ -34,36 +35,14 @@ async function processUserRemoval(config) {
         users2Delete.push(user);
       }
     }
-
-    //limit the no of users for testing purposes
-    //users2Delete = users2Delete.slice(0, 2);
-
     if (users2Delete.length > 0) {
-      console.log('The following users will be removed.');
-      users2Delete.forEach((user) => {
-        const userFields = user.fields;
-        console.log(
-          `${userFields.Title} - ${userFields.Country} - ${userFields.Email} - ${user.createdDateTime}`,
-        );
-      });
-      const readline = require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-
-      const readCallback = async function (text) {
-        if (text.toLowerCase() == 'y') {
-          for (const user of users2Delete) {
-            await deleteUser(user);
-          }
+      if (applyRemove) {
+        for (const user of users2Delete) {
+          await deleteUser(user);
         }
-        readline.close();
-      };
-
-      readline.question(
-        'Do you want to continue? Type Y for yes, or any key for no:',
-        readCallback,
-      );
+      } else {
+        return users2Delete;
+      }
     } else {
       console.log('No users to remove.');
     }

@@ -11,12 +11,12 @@ let configuration,
   _updateAll = false;
 
 //Entry point function for meeting fields processing functionality
-async function processMeetings(config, updateAll) {
+async function processMeetings(config, context, updateAll = false) {
   _updateAll = updateAll;
   configuration = config;
   try {
     const meetings = await loadMeetings(configuration.MeetingListId);
-    console.log('Number of meetings to process for fields update: ' + meetings.length);
+    context.log('Number of meetings to process for fields update: ' + meetings.length);
     for (const meeting of meetings) {
       await processMeeting(meeting);
     }
@@ -29,10 +29,10 @@ async function processMeetings(config, updateAll) {
 async function loadMeetings(meetingListId) {
   //get meetings from last 8 weeks to current date
   const currentDate = new Date(),
-    last4Weeks = new Date(currentDate.setDate(currentDate.getDate() - 8 * 7)),
+    last8Weeks = new Date(currentDate.setDate(currentDate.getDate() - 8 * 7)),
     filterString = _updateAll
       ? ''
-      : "&$filter=fields/Meetingstart ge '" + last4Weeks.toDateString() + "'";
+      : "&$filter=fields/Meetingstart ge '" + last8Weeks.toDateString() + "'";
   const response = await apiGet(
     apiConfigWithSite.uri +
     'lists/' +
@@ -63,7 +63,9 @@ async function processMeeting(meeting) {
 
 //load meeting join information based on the provided JoinMeetingId
 async function getMeetingJoinInfo(meeting) {
-  const joinMeetingId = utils.parseJoinMeetingId(meeting.JoinMeetingId);
+  const joinMeetingId = utils.parseJoinMeetingId(meeting.JoinMeetingId),
+    currentDate = (new Date()),
+    meetingStartDate = new Date(meeting.Meetingstart);
   try {
     if (joinMeetingId) {
       const userId = await userHelper.getLookupADUserId(meeting.MeetingmanagerLookupId);

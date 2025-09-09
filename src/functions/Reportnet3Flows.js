@@ -3,7 +3,7 @@ const { getConfiguration } = require("./lib/configuration"),
     { processFlows } = require("./processors/reportnet3FlowsProcessor")
 
 app.timer('Reportnet3Flows', {
-    schedule: process.env.REPORTNET3_SCHEDULE || '*/1 * * * *',  // fallback
+    schedule: process.env.REPORTNET3_SCHEDULE || '0 5 * * *',  // fallback
     handler: async (myTimer, context) => {
         context.log("Running Reportnet3Flows...");
 

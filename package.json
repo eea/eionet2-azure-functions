@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "azure-functions-core-tools": "^4.x"
+  },
+  "volta": {
+    "node": "22.19.0"
   }
 }

@@ -170,7 +170,7 @@ async function processMeeting(meeting) {
             configuration,
             attendanceReportsResponse.error,
             jobName,
-            `Meetting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
+            `Meeting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
             adUser?.mail,
           );
           return false;
@@ -178,7 +178,7 @@ async function processMeeting(meeting) {
       } else {
         await logging.error(
           configuration,
-          `Meetting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
+          `Meeting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
           jobName,
           undefined,
           adUser?.mail,

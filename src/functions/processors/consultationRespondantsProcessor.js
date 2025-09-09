@@ -1,6 +1,7 @@
 const logging = require('../lib/logging'),
   { apiGet, apiPatch, } = require('../lib/provider'),
   { apiConfigWithSite, apiConfigWithSecondarySite, } = require('../lib/graphClient'),
+  date = require('date-and-time'),
   jobName = 'ConsultationRespondants';
 
 //Entry-point function for processing consultation respondants
@@ -118,7 +119,7 @@ async function getCountries(configuration, consultation) {
 
 async function getAllowedCountries(configuration) {
   const response = await apiGet(
-    auth.apiConfigWithSite.uri + '/lists/' + configuration.ConsultationListId + '/columns',
+    apiConfigWithSite.uri + '/lists/' + configuration.ConsultationListId + '/columns',
   );
   const columns = response.data.value;
 
@@ -134,7 +135,7 @@ async function getAllowedCountries(configuration) {
 async function patchConsultation(consultationId, consultationTitle, countries, configuration) {
   try {
     const path =
-      auth.apiConfigWithSite.uri +
+      apiConfigWithSite.uri +
       'lists/' +
       configuration.ConsultationListId +
       '/items/' +
