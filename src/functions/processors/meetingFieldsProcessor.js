@@ -4,6 +4,7 @@ const logging = require('../lib/logging'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   userHelper = require('../lib/helpers/userHelper'),
   utils = require('../lib/helpers/utils'),
+  date = require('date-and-time'),
   jobName = 'UpdateMeetingFields';
 
 let configuration,
@@ -27,9 +28,9 @@ async function processMeetings(config, context, updateAll = false) {
 }
 
 async function loadMeetings(meetingListId) {
-  //get meetings from last 8 weeks to current date
+  //get meetings from last 14 weeks to current date
   const currentDate = new Date(),
-    last8Weeks = new Date(currentDate.setDate(currentDate.getDate() - 8 * 7)),
+    last8Weeks = new Date(currentDate.setDate(currentDate.getDate() - 14 * 7)),
     filterString = _updateAll
       ? ''
       : "&$filter=fields/Meetingstart ge '" + last8Weeks.toDateString() + "'";
@@ -64,10 +65,10 @@ async function processMeeting(meeting) {
 //load meeting join information based on the provided JoinMeetingId
 async function getMeetingJoinInfo(meeting) {
   const joinMeetingId = utils.parseJoinMeetingId(meeting.JoinMeetingId),
-    currentDate = (new Date()),
+    currentDate = date.format(new Date(), 'YYYY-MM-DD'),
     meetingStartDate = new Date(meeting.Meetingstart);
   try {
-    if (joinMeetingId) {
+    if (joinMeetingId && meetingStartDate >= currentDate) {
       const userId = await userHelper.getLookupADUserId(meeting.MeetingmanagerLookupId);
       const adUser = await userHelper.getADUser(userId);
       if (userId) {
@@ -137,10 +138,10 @@ async function patchMeeting(meeting, meetingJoinInfo, participants) {
     meetingStartDate = new Date(meeting.Meetingstart),
     //update registered count if meeting has bot yes started
     updateRegistered = _updateAll || meetingStartDate >= currentDate,
-    //update participated count if MeetingStartDate is between now and 4 weeks in the future
+    //update participated count if MeetingStartDate is between now and 4 weeks in the future or in the past
     updateParticipated =
       _updateAll ||
-      (meetingStartDate <= currentDate &&
+      (meetingStartDate <= currentDate ||
         currentDate <= new Date(meetingStartDate.setDate(meetingStartDate.getDate() + 4 * 7)));
 
   const countries = [
@@ -169,7 +170,7 @@ async function patchMeeting(meeting, meetingJoinInfo, participants) {
         newCountries = countries?.length ? countries.sort((a, b) => a - b).join(',') : undefined;
 
       if (
-        meetingFields.MeetingLink != meetingJoinLink ||
+        (meetingJoinLink && meetingFields.MeetingLink != meetingJoinLink) ||
         (updateParticipated && meetingFields.NoOfParticipants != participantsCount) ||
         (updateRegistered && meetingFields.NoOfRegistered != registeredCount) ||
         existingCountries != newCountries

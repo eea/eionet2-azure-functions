@@ -3,7 +3,7 @@ const { getConfiguration } = require("./lib/configuration");
 const { processOrganisations } = require('./processors/organisationFieldsProcessor');
 
 app.timer('OrganisationFields', {
-    schedule: process.env.ORGANISATIONFIELDS_SCHEDULE || '0 0/10 * * * *',  // fallback
+    schedule: process.env.ORGANISATIONFIELDS_SCHEDULE || '0 0 2 * * *',  // fallback
     handler: async (myTimer, context) => {
         context.log("Running OrganisationFields...");
 

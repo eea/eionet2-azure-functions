@@ -53,7 +53,7 @@ async function addTag(teamId, name, userId, email) {
 
 async function getTag(teamId, tagId, userId) {
   //endpoint returns 404 Not Found if user doesn't have the tag. Error is logged in logging list.
-  const response = await provider.apiGet(
+  const response = await apiGet(
     `${apiConfig.uri}/teams/${teamId}/tags/${tagId}/members?$filter=userId eq '${userId}'`,
   );
 
