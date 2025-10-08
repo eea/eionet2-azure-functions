@@ -1,177 +1,166 @@
-const axios = require('axios');
-const auth = require('./auth');
 const processor = require('./userNamesProcessor');
 
-jest.mock('axios');
-jest.mock('@azure/msal-node');
-jest.mock('./auth');
+// Mock all dependencies
+jest.mock('../lib/logging', () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+}));
 
-test('processUsers', () => {
-  axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.get.mockImplementation((url) => {
-    if (url.includes('/items?$expand=fields&$filter=fields/SignedIn eq 1')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              fields: {
-                id: '36',
-                Title: 'REAL Ionel Ganea',
-                Country: 'RO',
-                ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              },
-            },
-          ],
-        },
-      });
-    } else if (url.includes('/users/?$filter=id eq')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              displayName: 'REAL Ionel Ganea',
-            },
-          ],
-        },
-      });
-    }
+jest.mock('../lib/provider', () => ({
+  apiGet: jest.fn(),
+  apiPatch: jest.fn(),
+}));
+
+jest.mock('../lib/graphClient', () => ({
+  apiConfigWithSite: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+  apiConfig: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+}));
+
+jest.mock('../lib/helpers/userHelper', () => ({
+  getADUser: jest.fn(),
+}));
+
+// Get the mocked functions
+const { apiGet, apiPatch } = require('../lib/provider');
+const userHelper = require('../lib/helpers/userHelper');
+
+describe('userNamesProcessor', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  auth.getAccessToken.mockImplementation(() => {
-    return {
-      accessToken: {},
+  test('processUsers', async () => {
+    const mockConfig = {
+      UserListId: 'user-list-id',
     };
-  });
 
-  processor.processUsers('').then((data) => expect(data).toEqual(undefined));
-});
-
-test('processUsers', () => {
-  axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.get.mockImplementation((url) => {
-    if (url.includes(encodeURI('/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1'))) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              fields: {
-                id: '36',
-                Title: 'REAL Ionel Ganea',
-                Country: 'RO',
-                Email: 'toyet68222@sartess.com',
-                ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-                NFP: 'NFP',
+    apiGet.mockImplementation((url) => {
+      if (url.includes('user-list-id') && url.includes('items?$expand=fields')) {
+        return Promise.resolve({
+          success: true,
+          data: {
+            value: [
+              {
+                fields: {
+                  id: '36',
+                  Title: 'REAL Ionel Ganea',
+                  Country: 'RO',
+                  ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+                },
               },
-            },
-          ],
-        },
-      });
-    } else if (url.includes('/users/?$filter=id eq')) {
-      return Promise.resolve({
-        data: {
-          value: [],
-        },
-      });
-    }
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ success: false, data: null });
+    });
+
+    apiPatch.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: { id: 'user-id' },
+      }),
+    );
+
+    userHelper.getADUser.mockResolvedValue({
+      id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+      displayName: 'REAL Ionel Ganea',
+    });
+
+    const result = await processor.processUsers(mockConfig);
+    expect(result).toBeUndefined();
   });
 
-  auth.getAccessToken.mockImplementation(() => {
-    return {
-      accessToken: {},
+  test('processUsers with NFP', async () => {
+    const mockConfig = {
+      UserListId: 'user-list-id',
     };
-  });
 
-  processor.processUsers('').then((data) => expect(data).toEqual(undefined));
-});
-
-test('NFP', () => {
-  axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.get.mockImplementation((url) => {
-    if (url.includes(encodeURI('/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1'))) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              fields: {
-                id: '36',
-                Title: 'REAL Ionel Ganea',
-                Country: 'RO',
-                Email: 'toyet68222@sartess.com',
-                ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-                NFP: 'NFP',
+    apiGet.mockImplementation((url) => {
+      if (url.includes('user-list-id') && url.includes('items?$expand=fields')) {
+        return Promise.resolve({
+          success: true,
+          data: {
+            value: [
+              {
+                fields: {
+                  id: '36',
+                  Title: 'REAL Ionel Ganea',
+                  Country: 'RO',
+                  Email: 'toyet68222@sartess.com',
+                  ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+                  NFP: 'NFP',
+                },
               },
-            },
-          ],
-        },
-      });
-    } else if (url.includes(encodeURI('/users/?$filter=id eq'))) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              displayName: 'REAL Ionel Ganea',
-            },
-          ],
-        },
-      });
-    }
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ success: false, data: null });
+    });
+
+    apiPatch.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: { id: 'user-id' },
+      }),
+    );
+
+    userHelper.getADUser.mockResolvedValue({
+      id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+      displayName: 'REAL Ionel Ganea',
+    });
+
+    const result = await processor.processUsers(mockConfig);
+    expect(result).toBeUndefined();
   });
 
-  auth.getAccessToken.mockImplementation(() => {
-    return {
-      accessToken: {},
+  test('processUsers with AD country', async () => {
+    const mockConfig = {
+      UserListId: 'user-list-id',
     };
-  });
 
-  processor.processUsers('').then((data) => expect(data).toEqual(undefined));
-});
-
-test('AD country', () => {
-  axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.get.mockImplementation((url) => {
-    if (url.includes('/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              fields: {
-                id: '36',
-                Title: 'REAL Ionel Ganea',
-                Country: 'RO',
-                Email: 'toyet68222@sartess.com',
-                ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-                NFP: 'NFP',
+    apiGet.mockImplementation((url) => {
+      if (url.includes('user-list-id') && url.includes('items?$expand=fields')) {
+        return Promise.resolve({
+          success: true,
+          data: {
+            value: [
+              {
+                fields: {
+                  id: '36',
+                  Title: 'REAL Ionel Ganea',
+                  Country: 'RO',
+                  Email: 'toyet68222@sartess.com',
+                  ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+                  NFP: 'NFP',
+                },
               },
-            },
-          ],
-        },
-      });
-    } else if (url.includes('/users/?$filter=id eq')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              displayName: 'REAL Ionel Ganea',
-              country: 'MK',
-            },
-          ],
-        },
-      });
-    }
-  });
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ success: false, data: null });
+    });
 
-  auth.getAccessToken.mockImplementation(() => {
-    return {
-      accessToken: {},
-    };
-  });
+    apiPatch.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: { id: 'user-id' },
+      }),
+    );
 
-  processor.processUsers('').then((data) => expect(data).toEqual(undefined));
+    userHelper.getADUser.mockResolvedValue({
+      id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+      displayName: 'REAL Ionel Ganea',
+      country: 'MK',
+    });
+
+    const result = await processor.processUsers(mockConfig);
+    expect(result).toBeUndefined();
+  });
 });

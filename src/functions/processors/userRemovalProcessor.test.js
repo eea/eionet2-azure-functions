@@ -1,10 +1,50 @@
-const axios = require('axios'),
-  auth = require('./auth'),
-  processor = require('./userRemovalProcessor');
+const processor = require('./userRemovalProcessor');
 
-jest.mock('axios');
-jest.mock('@azure/msal-node');
-jest.mock('./auth');
+// Mock all dependencies
+jest.mock('../lib/logging', () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+}));
+
+jest.mock('../lib/provider', () => ({
+  apiGet: jest.fn(),
+  apiPost: jest.fn(),
+  apiPatch: jest.fn(),
+  apiDelete: jest.fn(),
+}));
+
+jest.mock('../lib/graphClient', () => ({
+  apiConfigWithSite: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+  apiConfig: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+}));
+
+jest.mock('../lib/helpers/userHelper', () => ({
+  getADUser: jest.fn(),
+}));
+
+jest.mock('../lib/helpers/userGroupHelper', () => ({
+  getDistinctGroupsIds: jest.fn(),
+  getExistingGroups: jest.fn(),
+}));
+
+jest.mock('../lib/helpers/mappingHelper', () => ({
+  initialize: jest.fn(),
+  getMappings: jest.fn(),
+}));
+
+jest.mock('../lib/helpers/tagHelper', () => ({
+  initialize: jest.fn(),
+}));
+
+// Get the mocked functions
+const { apiGet, apiPatch, apiDelete } = require('../lib/provider');
+const userHelper = require('../lib/helpers/userHelper');
+const userGroupHelper = require('../lib/helpers/userGroupHelper');
+const mappingHelper = require('../lib/helpers/mappingHelper');
 
 describe('userRemovalProcessor', () => {
   test('Signed In null in no activity', () => {
@@ -93,15 +133,25 @@ describe('userRemovalProcessor', () => {
     expect(processor.shouldRemoveUser(userData, activity, filterDate, lastSignInDate)).toBe(true);
   });
 
-  test('processUserRemoval', () => {
-    axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-    axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-    axios.get.mockImplementation((url) => {
-      if (url.includes('top=999')) {
+  test('processUserRemoval', async () => {
+    const mockConfig = {
+      UserListId: 'user-list-id',
+      RemoveNonSignedInUserNoOfDays: 30,
+      UserRemovalLastSignInDateTime: '2023-08-01',
+    };
+
+    const mockContext = {
+      log: jest.fn(),
+    };
+
+    apiGet.mockImplementation((url) => {
+      if (url.includes('user-list-id') && url.includes('items?$expand=fields')) {
         return Promise.resolve({
+          success: true,
           data: {
             value: [
               {
+                id: '36',
                 createdDateTime: '2023-04-01',
                 fields: {
                   id: '36',
@@ -116,6 +166,7 @@ describe('userRemovalProcessor', () => {
         });
       } else if (url.includes('users?select=id,displayName,signInActivity')) {
         return Promise.resolve({
+          success: true,
           data: {
             value: [
               {
@@ -129,14 +180,31 @@ describe('userRemovalProcessor', () => {
           },
         });
       }
+      return Promise.resolve({ success: false, data: null });
     });
 
-    auth.getAccessToken.mockImplementation(() => {
-      return {
-        accessToken: {},
-      };
-    });
+    apiPatch.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: { id: 'user-id' },
+      }),
+    );
 
-    processor.processUserRemoval('').then((data) => expect(data).toEqual(undefined));
+    apiDelete.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: {},
+      }),
+    );
+
+    // Mock helper functions
+    mappingHelper.initialize.mockResolvedValue();
+    mappingHelper.getMappings.mockReturnValue([]);
+    userHelper.getADUser.mockResolvedValue({ id: 'user-id' });
+    userGroupHelper.getDistinctGroupsIds.mockReturnValue([]);
+    userGroupHelper.getExistingGroups.mockResolvedValue([]);
+
+    const result = await processor.processUserRemoval(mockContext, mockConfig, false);
+    expect(result).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 const logging = require('../lib/logging'),
-  { apiGet, apiPatch, } = require('../lib/provider'),
-  { apiConfigWithSite, apiConfigWithSecondarySite, } = require('../lib/graphClient'),
+  { apiGet, apiPatch } = require('../lib/provider'),
+  { apiConfigWithSite, apiConfigWithSecondarySite } = require('../lib/graphClient'),
   date = require('date-and-time'),
   jobName = 'ConsultationRespondants';
 
@@ -26,13 +26,13 @@ async function loadConsulations(listId) {
 
   let path = encodeURI(
     apiConfigWithSite.uri +
-    'lists/' +
-    listId +
-    "/items?$expand=fields&$top=999&$filter=fields/ConsultationListId ne null and fields/Startdate le '" +
-    filterDate +
-    "' and fields/Closed ge '" +
-    filterDate +
-    "'",
+      'lists/' +
+      listId +
+      "/items?$expand=fields&$top=999&$filter=fields/ConsultationListId ne null and fields/Startdate le '" +
+      filterDate +
+      "' and fields/Closed ge '" +
+      filterDate +
+      "'",
   );
   let result = [];
 
@@ -51,10 +51,10 @@ async function loadConsulations(listId) {
 
 async function processConsultation(consultation, configuration) {
   const consultationFields = consultation.fields;
-
   const countries = await getCountries(configuration, consultationFields);
+
   if (countries.length) {
-    await patchConsultation(consultation.id, consultationFields.Title, countries, configuration);
+    await patchConsultation(consultation.id, consultationFields, countries, configuration);
   }
 }
 
@@ -82,15 +82,14 @@ async function getCountries(configuration, consultation) {
         path = undefined;
       }
     }
-
     if (listResult.length) {
       const firstRecord = listResult[0];
       if (!Object.prototype.hasOwnProperty.call(firstRecord.fields, 'Country')) {
         await logging.info(
           configuration,
           consultation.Title +
-          ': Cannot find column "Country" in specified list ' +
-          consultation.ConsultationListId,
+            ': Cannot find column "Country" in specified list ' +
+            consultation.ConsultationListId,
           '',
           {},
           jobName,
@@ -106,8 +105,8 @@ async function getCountries(configuration, consultation) {
     await logging.info(
       configuration,
       consultation.Title +
-      ': List with the specified ID does not exist ' +
-      consultation.ConsultationListId,
+        ': List with the specified ID does not exist ' +
+        consultation.ConsultationListId,
       '',
       {},
       jobName,
@@ -132,23 +131,27 @@ async function getAllowedCountries(configuration) {
 }
 
 //Update respondants field on consultation
-async function patchConsultation(consultationId, consultationTitle, countries, configuration) {
+async function patchConsultation(consultationId, consultationFields, countries, configuration) {
   try {
     const path =
-      apiConfigWithSite.uri +
-      'lists/' +
-      configuration.ConsultationListId +
-      '/items/' +
-      consultationId,
+        apiConfigWithSite.uri +
+        'lists/' +
+        configuration.ConsultationListId +
+        '/items/' +
+        consultationId,
       response = await apiPatch(path, {
         fields: {
           'Respondants@odata.type': 'Collection(Edm.String)',
           Respondants: countries,
+          //...(consultationFields.ConsultationListId && { ConsultationListId: consultationFields.ConsultationListId }),
         },
       });
     if (response.success) {
       console.log(
-        'Consultation updated succesfully : ' + consultationTitle + ' ' + countries.join(','),
+        'Consultation updated succesfully : ' +
+          consultationFields.Title +
+          ' ' +
+          countries.join(','),
       );
       noOfUpdateRecords++;
       return response.data;

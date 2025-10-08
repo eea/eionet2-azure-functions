@@ -23,13 +23,13 @@ async function loadUsers(listId) {
   const filterDate = new Date(new Date().setDate(new Date().getDate() - 30));
 
   let path = encodeURI(
-    apiConfigWithSite.uri +
-    'lists/' +
-    listId +
-    "/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1 and fields/SignedInDate ge '" +
-    filterDate.toDateString() +
-    "'",
-  ),
+      apiConfigWithSite.uri +
+        'lists/' +
+        listId +
+        "/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1 and fields/SignedInDate ge '" +
+        filterDate.toDateString() +
+        "'",
+    ),
     result = [];
 
   while (path) {

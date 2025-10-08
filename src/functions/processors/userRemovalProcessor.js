@@ -1,5 +1,5 @@
 const logging = require('../lib/logging'),
-  { apiGet, apiPost, } = require('../lib/provider'),
+  { apiGet, apiPatch, apiDelete } = require('../lib/provider'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   userHelper = require('../lib/helpers/userHelper'),
   userGroupHelper = require('../lib/helpers/userGroupHelper'),
@@ -66,8 +66,8 @@ function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
 
 async function loadUsers(listId) {
   let path = encodeURI(
-    apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
-  ),
+      apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
+    ),
     result = [];
 
   while (path) {
@@ -144,9 +144,7 @@ async function deleteUser(user) {
     console.log("User doesn't have a valid ADUserId. Nothing to remove from AD.");
   }
   try {
-    await apiDelete(
-      `${apiConfigWithSite.uri}lists/${configuration.UserListId}/items/${user.id}`,
-    );
+    await apiDelete(`${apiConfigWithSite.uri}lists/${configuration.UserListId}/items/${user.id}`);
     await logging.info(
       configuration,
       'User was removed from list.',

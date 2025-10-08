@@ -1,53 +1,52 @@
-const axios = require('axios'),
-  auth = require('./auth'),
-  processor = require('./userLastSignInProcessor');
+const processor = require('./userLastSignInProcessor');
 
-jest.mock('axios');
-jest.mock('@azure/msal-node');
-jest.mock('./auth');
+// Mock all dependencies
+jest.mock('../lib/logging', () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+}));
 
-test('processUserLastSignIn', () => {
-  axios.post.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.patch.mockImplementation(() => Promise.resolve({ data: {} }));
-  axios.get.mockImplementation((url) => {
-    if (url.includes('SignedIn')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              fields: {
-                id: '36',
-                Title: 'REAL Ionel Ganea',
-                Country: 'RO',
-                LastSignInDate: undefined,
-                ADUserId: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              },
-            },
-          ],
-        },
-      });
-    } else if (url.includes('users?select=id,displayName,signInActivity')) {
-      return Promise.resolve({
-        data: {
-          value: [
-            {
-              id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              displayName: 'REAL Ionel Ganea',
-              signInActivity: {
-                lastSignInDateTime: '2024-08-11',
-              },
-            },
-          ],
-        },
-      });
-    }
+jest.mock('../lib/provider', () => ({
+  apiGet: jest.fn(),
+  apiPatch: jest.fn(),
+  apiPost: jest.fn(),
+}));
+
+jest.mock('../lib/graphClient', () => ({
+  apiConfigWithSite: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+  apiConfig: {
+    uri: 'https://test.sharepoint.com/sites/test/',
+  },
+}));
+
+jest.mock('../lib/helpers/userHelper', () => ({
+  getADUser: jest.fn(),
+  getUserByMail: jest.fn(),
+}));
+
+// Get the mocked functions
+const { apiGet } = require('../lib/provider');
+
+describe('userLastSignInProcessor', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  auth.getAccessToken.mockImplementation(() => {
-    return {
-      accessToken: {},
+  test('basic test', async () => {
+    const mockConfig = {
+      UserListId: 'user-list-id',
     };
-  });
 
-  processor.processUserLastSignIn('').then((data) => expect(data).toEqual(undefined));
+    apiGet.mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        data: { value: [] },
+      }),
+    );
+
+    const result = await processor.processUserLastSignIn(mockConfig);
+    expect(result).toBeUndefined();
+  });
 });

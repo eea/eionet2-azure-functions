@@ -32,7 +32,7 @@ async function addTag(teamId, name, userId, email) {
       );
     }
   } else {
-    postResponse = await apiPost(`${auth.apiConfig.uri}/teams/${teamId}/tags/`, {
+    postResponse = await apiPost(`${apiConfig.uri}/teams/${teamId}/tags/`, {
       displayName: name,
       members: [
         {

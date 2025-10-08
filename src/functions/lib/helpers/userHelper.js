@@ -1,4 +1,4 @@
-const { error } = require('../../lib/logging'),
+const logging = require('../../lib/logging'),
   { apiGet } = require('../../lib/provider'),
   { apiConfig, apiConfigWithSite } = require('../../lib/graphClient');
 let configuration, jobName;
@@ -19,7 +19,7 @@ async function getADUser(userId) {
     }
     return undefined;
   } catch (error) {
-    await error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName);
     return undefined;
   }
 }

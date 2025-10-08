@@ -1,11 +1,9 @@
-
 const logging = require('../lib/logging'),
-  { apiGet, apiPatch, } = require('../lib/provider'),
+  { apiGet, apiPatch } = require('../lib/provider'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   mappingHelper = require('../lib/helpers/mappingHelper'),
   tagHelper = require('../lib/helpers/tagHelper'),
   jobName = 'UserLastSignIn';
-
 
 //Entry point function for processing last sign id date for users that have signed it in Eionet
 let configuration;
@@ -63,11 +61,11 @@ async function processUserLastSignIn(config) {
 
 async function loadUsers(listId) {
   let path = encodeURI(
-    apiConfigWithSite.uri +
-    'lists/' +
-    listId +
-    '/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1',
-  ),
+      apiConfigWithSite.uri +
+        'lists/' +
+        listId +
+        '/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1',
+    ),
     result = [];
 
   while (path) {

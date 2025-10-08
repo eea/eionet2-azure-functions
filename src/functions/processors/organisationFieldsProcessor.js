@@ -1,25 +1,28 @@
-
 const logging = require('../lib/logging'),
-  { apiGet, apiPatch, } = require('../lib/provider'),
-  { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
-  userHelper = require('../lib/helpers/userHelper'),
-  utils = require('../lib/helpers/utils'),
+  { apiGet, apiPatch } = require('../lib/provider'),
+  { apiConfigWithSite } = require('../lib/graphClient'),
   jobName = 'UpdateOrganisationFields';
 
-let configuration,
-  //if set to true ignores filters and updates all meetings.
-  _updateAll = false;
+let configuration;
 
-//Entry point function for meeting fields processing functionality
+//Entry point function for organisation fields processing functionality
 async function processOrganisations(config, context) {
   configuration = config;
   try {
     const organisations = await loadRecords(configuration.OrganisationListId),
       users = await loadRecords(configuration.UserListId);
 
-    context.log('Number of organisations to process for fields update: ' + organisations.length);
-    for (const organisation of organisations) {
-      await processOrganisation(context, organisation, users.filter(u => u.fields.OrganisationLookupId == organisation.id)?.length);
+    context.log('Number of users loaded: ' + users.length);
+    if (users.length) {
+      //do nothing is users are not loaded.
+      context.log('Number of organisations to process for fields update: ' + organisations.length);
+      for (const organisation of organisations) {
+        await processOrganisation(
+          context,
+          organisation,
+          users.filter((u) => u.fields.OrganisationLookupId == organisation.id)?.length,
+        );
+      }
     }
   } catch (error) {
     await logging.error(configuration, error, jobName);
@@ -55,7 +58,7 @@ async function processOrganisation(context, organisation, userCount) {
       if (organisationFields.Members !== userCount) {
         response = await apiPatch(path, {
           fields: {
-            Members: userCount
+            Members: userCount,
           },
         });
         if (response.success) {

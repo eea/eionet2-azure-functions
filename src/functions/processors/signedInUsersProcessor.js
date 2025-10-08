@@ -1,5 +1,5 @@
 const logging = require('../lib/logging'),
-  { apiGet, apiPatch, } = require('../lib/provider'),
+  { apiGet, apiPatch } = require('../lib/provider'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   mappingHelper = require('../lib/helpers/mappingHelper'),
   userHelper = require('../lib/helpers/userHelper'),
@@ -27,11 +27,11 @@ async function processSignedInUsers(config) {
 
 async function loadUsers(listId) {
   let path = encodeURI(
-    apiConfigWithSite.uri +
-    'lists/' +
-    listId +
-    '/items?$expand=fields&$top=999&$filter=fields/SignedIn eq null or fields/SignedIn eq 0',
-  ),
+      apiConfigWithSite.uri +
+        'lists/' +
+        listId +
+        '/items?$expand=fields&$top=999&$filter=fields/SignedIn eq null or fields/SignedIn eq 0',
+    ),
     result = [];
 
   while (path) {
@@ -142,8 +142,7 @@ async function applyTags(userFields) {
 //Mark user as signedIn in sharepoint list
 async function patchSPUser(userId, userData) {
   try {
-    const path =
-      apiConfigWithSite.uri + 'lists/' + configuration.UserListId + '/items/' + userId,
+    const path = apiConfigWithSite.uri + 'lists/' + configuration.UserListId + '/items/' + userId,
       response = await apiPatch(path, {
         fields: {
           SignedIn: userData.SignedIn,

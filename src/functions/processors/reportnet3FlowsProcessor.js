@@ -1,6 +1,6 @@
 const logging = require('../lib/logging'),
   { apiGet, apiPatch, apiPost, apiDelete } = require('../lib/provider'),
-  { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
+  { apiConfigWithSite } = require('../lib/graphClient'),
   utils = require('../lib/helpers/utils'),
   axios = require('axios'),
   jobName = 'Reportnet3Flows';
@@ -112,9 +112,7 @@ async function loadReportnetFlows(configuration, country) {
 }
 
 async function loadItems(listId) {
-  let path = encodeURI(
-    `${apiConfigWithSite.uri}lists/${listId}/items?$expand=fields&$top=999`,
-  ),
+  let path = encodeURI(`${apiConfigWithSite.uri}lists/${listId}/items?$expand=fields&$top=999`),
     result = [];
 
   while (path) {
@@ -129,7 +127,6 @@ async function loadItems(listId) {
 
   return result;
 }
-
 
 function computeStatus(flow) {
   if (!flow.releasable) return 'Closed';
@@ -152,14 +149,16 @@ function mapFlows(configuration, flows, spFlows, spObligations) {
     emails = [...new Set(emails.filter((e) => !!e))];
 
     const releasedDates = flow.releasedDates
-      .filter((rd) => !!rd)
-      .sort((a, b) => a - b)
-      .map((rDate) => getDate(rDate)),
+        .filter((rd) => !!rd)
+        .sort((a, b) => a - b)
+        .map((rDate) => getDate(rDate)),
       firstReleaseDate = releasedDates?.length ? releasedDates[0] : undefined,
       lastReleaseDate =
         releasedDates?.length > 1 ? releasedDates[releasedDates.length - 1] : undefined;
 
-    const spFlow = spFlows.find((spl) => spl.fields.DataflowId == flow.id && spl.fields.Country == flow.country),
+    const spFlow = spFlows.find(
+        (spl) => spl.fields.DataflowId == flow.id && spl.fields.Country == flow.country,
+      ),
       spObligation = spObligations.find((spo) => spo.fields.Url == obligation?.obligationLink);
 
     return {
@@ -181,7 +180,6 @@ function mapFlows(configuration, flows, spFlows, spObligations) {
       DeliveryStatus: utils.capitalize(
         flow.reportingDatasets?.sort((a, b) => b.creationDate - a.creationDate)[0]?.status,
       ),
-
     };
   });
 }

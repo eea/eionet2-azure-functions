@@ -1,9 +1,10 @@
 const logging = require('../lib/logging'),
-  { apiGet, apiPost, } = require('../lib/provider'),
+  { apiGet, apiPost } = require('../lib/provider'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   userHelper = require('../lib/helpers/userHelper'),
   userGroupHelper = require('../lib/helpers/userGroupHelper'),
   tagHelper = require('../lib/helpers/tagHelper'),
+  mappingHelper = require('../lib/helpers/mappingHelper'),
   jobName = 'UserMembershipUpdates';
 
 let noOfUpdated, no2Process;
@@ -35,8 +36,8 @@ async function processUsers(configuration) {
 //Load signed in users for processing.
 async function loadUsers(configuration) {
   let path = encodeURI(
-    `${apiConfigWithSite.uri}lists/${configuration.UserListId}/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1`,
-  ),
+      `${apiConfigWithSite.uri}lists/${configuration.UserListId}/items?$expand=fields&$top=999&$filter=fields/SignedIn eq 1`,
+    ),
     result = [];
 
   while (path) {

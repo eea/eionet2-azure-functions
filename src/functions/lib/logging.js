@@ -1,5 +1,5 @@
 const axios = require('axios'),
-  { getAccessToken, apiConfigWithSite } = require("./graphClient")
+  { getAccessToken, apiConfigWithSite } = require('./graphClient');
 
 async function info(configuration, message, apiPath, data, jobName, action, affectedUser) {
   console.log(message);

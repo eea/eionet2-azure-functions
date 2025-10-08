@@ -1,6 +1,5 @@
-
 const logging = require('../lib/logging'),
-  { apiGet, apiPatch, } = require('../lib/provider'),
+  { apiGet, apiPatch } = require('../lib/provider'),
   { apiConfigWithSite, apiConfig } = require('../lib/graphClient'),
   userHelper = require('../lib/helpers/userHelper'),
   utils = require('../lib/helpers/utils'),
@@ -36,10 +35,10 @@ async function loadMeetings(meetingListId) {
       : "&$filter=fields/Meetingstart ge '" + last8Weeks.toDateString() + "'";
   const response = await apiGet(
     apiConfigWithSite.uri +
-    'lists/' +
-    meetingListId +
-    '/items?$expand=fields&$top=999' +
-    filterString,
+      'lists/' +
+      meetingListId +
+      '/items?$expand=fields&$top=999' +
+      filterString,
   );
   if (response.success) {
     return response.data.value;
@@ -65,7 +64,7 @@ async function processMeeting(meeting) {
 //load meeting join information based on the provided JoinMeetingId
 async function getMeetingJoinInfo(meeting) {
   const joinMeetingId = utils.parseJoinMeetingId(meeting.JoinMeetingId),
-    currentDate = date.format(new Date(), 'YYYY-MM-DD'),
+    currentDate = new Date(date.format(new Date(), 'YYYY-MM-DD')),
     meetingStartDate = new Date(meeting.Meetingstart);
   try {
     if (joinMeetingId && meetingStartDate >= currentDate) {
@@ -74,11 +73,11 @@ async function getMeetingJoinInfo(meeting) {
       if (userId) {
         const response = await apiGet(
           apiConfig.uri +
-          '/users/' +
-          userId +
-          "/onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq '" +
-          joinMeetingId +
-          "'",
+            '/users/' +
+            userId +
+            "/onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq '" +
+            joinMeetingId +
+            "'",
         );
         if (response.success && response.data.value && response.data.value.length > 0) {
           return response.data.value[0];
@@ -104,12 +103,12 @@ async function getMeetingJoinInfo(meeting) {
 async function getParticipants(meetingId) {
   try {
     let path = encodeURI(
-      apiConfigWithSite.uri +
-      'lists/' +
-      configuration.MeetingParticipantsListId +
-      '/items?$expand=fields&$top=999&$filter=fields/MeetingtitleLookupId eq ' +
-      meetingId,
-    ),
+        apiConfigWithSite.uri +
+          'lists/' +
+          configuration.MeetingParticipantsListId +
+          '/items?$expand=fields&$top=999&$filter=fields/MeetingtitleLookupId eq ' +
+          meetingId,
+      ),
       result = [];
 
     while (path) {
@@ -141,8 +140,8 @@ async function patchMeeting(meeting, meetingJoinInfo, participants) {
     //update participated count if MeetingStartDate is between now and 4 weeks in the future or in the past
     updateParticipated =
       _updateAll ||
-      (meetingStartDate <= currentDate ||
-        currentDate <= new Date(meetingStartDate.setDate(meetingStartDate.getDate() + 4 * 7)));
+      meetingStartDate <= currentDate ||
+      currentDate <= new Date(meetingStartDate.setDate(meetingStartDate.getDate() + 4 * 7));
 
   const countries = [
     ...new Set(
@@ -165,8 +164,8 @@ async function patchMeeting(meeting, meetingJoinInfo, participants) {
         registeredCount = participants.filter((p) => p.fields.Registered).length;
 
       const existingCountries = meetingFields.Countries?.length
-        ? meetingFields.Countries.sort((a, b) => a - b).join(',')
-        : undefined,
+          ? meetingFields.Countries.sort((a, b) => a - b).join(',')
+          : undefined,
         newCountries = countries?.length ? countries.sort((a, b) => a - b).join(',') : undefined;
 
       if (
