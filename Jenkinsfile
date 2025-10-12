@@ -47,7 +47,7 @@ pipeline {
             env.NODEJS_HOME = "${tool 'NodeJS'}"
             env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
             env.CI=false
-            sh "npm install"
+            sh "npm install --legacy-peer-deps"
             sh "npm run format"
             sh "npm run test"
           }
