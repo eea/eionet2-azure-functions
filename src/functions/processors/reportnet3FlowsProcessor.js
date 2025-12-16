@@ -13,7 +13,8 @@ async function processFlows(configuration) {
       spObligations = await loadItems(configuration.ObligationsListId);
 
     let flowCount = 0,
-      flows = [];
+      flows = [],
+      countries2Ignore = [];
 
     for (const country of countries) {
       let result = await loadReportnetFlows(configuration, country);
@@ -25,6 +26,9 @@ async function processFlows(configuration) {
       flows.push(...result);
       flowCount += result.length;
       console.log(`Number of data flows loaded for country ${country} :` + result.length);
+
+      //nothing loaded for the country. Ignore it at remove.
+      (result?.length == 0) && countries2Ignore.push(country);
     }
 
     const flows2Save = mapFlows(configuration, flows, spFlows, spObligations);
@@ -33,8 +37,10 @@ async function processFlows(configuration) {
     }
 
     console.log('Total number of data flows updated: ' + flowCount);
+    console.log(countries2Ignore);
 
     const flows2Remove = spFlows
+      .filter(flow => !countries2Ignore.includes(flow.fields.Country))
       .map((spFlow) => {
         if (
           !flows.find(
@@ -106,6 +112,7 @@ async function loadReportnetFlows(configuration, country) {
     }
   } catch (error) {
     await logging.error(configuration, error, jobName);
+    return [];
   }
 
   return dataflows;
@@ -149,16 +156,16 @@ function mapFlows(configuration, flows, spFlows, spObligations) {
     emails = [...new Set(emails.filter((e) => !!e))];
 
     const releasedDates = flow.releasedDates
-        .filter((rd) => !!rd)
-        .sort((a, b) => a - b)
-        .map((rDate) => getDate(rDate)),
+      .filter((rd) => !!rd)
+      .sort((a, b) => a - b)
+      .map((rDate) => getDate(rDate)),
       firstReleaseDate = releasedDates?.length ? releasedDates[0] : undefined,
       lastReleaseDate =
         releasedDates?.length > 1 ? releasedDates[releasedDates.length - 1] : undefined;
 
     const spFlow = spFlows.find(
-        (spl) => spl.fields.DataflowId == flow.id && spl.fields.Country == flow.country,
-      ),
+      (spl) => spl.fields.DataflowId == flow.id && spl.fields.Country == flow.country,
+    ),
       spObligation = spObligations.find((spo) => spo.fields.Url == obligation?.obligationLink);
 
     return {
