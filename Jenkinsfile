@@ -3,8 +3,7 @@ pipeline {
 
   environment {
         GIT_NAME = "eionet2-azure-functions"
-        NAMESPACE = "@eeacms"
-        SONARQUBE_TAGS = "volto.eea.europa.eu"
+        SONARQUBE_TAGS = "eionet2"
         DEPENDENCIES = ""
     }
 
