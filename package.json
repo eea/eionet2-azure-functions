@@ -1,5 +1,5 @@
 {
-  "name": "@eeacms/eionet2-azure-functions",
+  "name": "eionet2-azure-functions",
   "version": "1.0.0",
   "description": "",
   "main": "src/functions/*.js",
