@@ -1,6 +1,6 @@
 {
   "name": "eionet2-azure-functions",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "src/functions/*.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "lint": "node_modules/eslint/bin/eslint.js --max-warnings=0 'src/**/*.{js,jsx}'",
     "lint:fix": "node_modules/eslint/bin/eslint.js --fix 'src/**/*.{js,jsx}'",
     "format": "npm run stylelint:fix & npm run prettier:fix & npm run lint:fix",
-    "test": "jest",
+    "test": "jest --coverage",
     "test:watch": "jest --watch"
   },
   "dependencies": {

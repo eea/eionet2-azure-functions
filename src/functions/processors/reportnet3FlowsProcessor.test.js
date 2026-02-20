@@ -553,6 +553,20 @@ describe('reportnet3FlowsProcessor', () => {
       },
     ];
 
+    const mockReportnetFlows = [
+      {
+        id: 'flow-456',
+        name: 'Flow to Keep',
+        status: 'draft',
+        showPublicInfo: true,
+        releasable: true,
+        obligation: null,
+        representatives: [],
+        releasedDates: [],
+        reportingDatasets: [],
+      },
+    ];
+
     apiGet.mockImplementation((url) => {
       if (url.includes('/columns')) {
         return Promise.resolve({
@@ -573,16 +587,22 @@ describe('reportnet3FlowsProcessor', () => {
 
     axios.default.request.mockResolvedValue({
       data: {
-        totalRecords: 0,
-        dataflows: [],
+        totalRecords: 1,
+        dataflows: mockReportnetFlows,
       },
     });
 
     apiDelete.mockResolvedValue({ success: true });
+    utils.capitalize.mockImplementation((str) => {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    });
 
     const result = await processor.processFlows(mockConfig);
     expect(result).toBeUndefined();
-    expect(apiDelete).toHaveBeenCalled();
+    expect(apiDelete).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/flows-list-id/items/1',
+    );
   });
 
   test('should handle flows with missing obligation data', async () => {
