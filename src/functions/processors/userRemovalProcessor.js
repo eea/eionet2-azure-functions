@@ -19,7 +19,8 @@ async function processUserRemoval(context, config, applyRemove) {
     await mappingHelper.initialize(configuration);
     await tagHelper.initialize(jobName, configuration);
 
-    const users = await loadUsers(configuration.UserListId);
+    const users = await loadList(configuration.UserListId),
+      organisations = await loadList(configuration.OrganisationListId);
     const signInActivities = await loadSignInActivities();
     for (const user of users) {
       const userFields = user.fields,
@@ -32,6 +33,10 @@ async function processUserRemoval(context, config, applyRemove) {
           new Date(configuration.UserRemovalLastSignInDateTime),
         )
       ) {
+        user.lastSignInDateTime = activity?.signInActivity?.lastSignInDateTime;
+        user.organisationName = organisations?.find(
+          (o) => o.id == userFields.OrganisationLookupId,
+        )?.fields.Title;
         users2Delete.push(user);
       }
     }
@@ -54,17 +59,19 @@ async function processUserRemoval(context, config, applyRemove) {
 
 function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
   const userFields = user.fields,
-    isSignedIn = userFields.SignedIn != null && !!userFields.SignedIn;
+    isSignedIn = userFields.SignedIn != null && !!userFields.SignedIn && !!activity?.signInActivity;
 
-  return (
-    (!isSignedIn && !activity?.signInActivity && new Date(user.createdDateTime) < filterDate) ||
-    (isSignedIn &&
-      (!activity?.signInActivity ||
-        new Date(activity.signInActivity.lastSignInDateTime) < lastSignInDate))
-  );
+  if (!isSignedIn) {
+    return new Date(user.createdDateTime) < filterDate;
+  } else {
+    return (
+      activity.signInActivity.lastSignInDateTime !== null &&
+      new Date(activity.signInActivity.lastSignInDateTime) < lastSignInDate
+    );
+  }
 }
 
-async function loadUsers(listId) {
+async function loadList(listId) {
   let path = encodeURI(
       apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
     ),

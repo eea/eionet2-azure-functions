@@ -11,9 +11,9 @@
     "prettier:fix": "prettier --single-quote --write 'src/**/*.{js,jsx,json,css,less,md}'",
     "lint": "node_modules/eslint/bin/eslint.js --max-warnings=0 'src/**/*.{js,jsx}'",
     "lint:fix": "node_modules/eslint/bin/eslint.js --fix 'src/**/*.{js,jsx}'",
-    "format": "npm run stylelint:fix & npm run prettier:fix & npm run lint:fix",
     "test": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "pc": "npm run stylelint:fix & npm run  prettier:fix & npm run lint:fix & npm run test"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",

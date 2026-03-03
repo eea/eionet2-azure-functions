@@ -11,7 +11,18 @@ function capitalize(str) {
   const result = str?.toLowerCase().replace(/_/g, ' ');
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
+
+// Minimal HTML escaping to avoid breaking the table / XSS
+function escapeHtml(s = '') {
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 module.exports = {
   parseJoinMeetingId: parseJoinMeetingId,
   capitalize: capitalize,
+  escapeHtml: escapeHtml,
 };
