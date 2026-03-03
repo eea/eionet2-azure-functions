@@ -61,13 +61,13 @@ function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
   const userFields = user.fields,
     isSignedIn = userFields.SignedIn != null && !!userFields.SignedIn && !!activity?.signInActivity;
 
-  if (!isSignedIn) {
-    return new Date(user.createdDateTime) < filterDate;
-  } else {
+  if (isSignedIn) {
     return (
       activity.signInActivity.lastSignInDateTime !== null &&
       new Date(activity.signInActivity.lastSignInDateTime) < lastSignInDate
     );
+  } else {
+    return new Date(user.createdDateTime) < filterDate;
   }
 }
 
