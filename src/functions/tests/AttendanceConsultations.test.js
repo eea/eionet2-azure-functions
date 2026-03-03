@@ -76,6 +76,9 @@ describe('AttendanceConsultations function', () => {
 
     await handler({}, context);
 
-    expect(context.error).toHaveBeenCalledWith('Error in AttendanceConsultations:', 'meetings failed');
+    expect(context.error).toHaveBeenCalledWith(
+      'Error in AttendanceConsultations:',
+      'meetings failed',
+    );
   });
 });
