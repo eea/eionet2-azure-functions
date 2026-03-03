@@ -43,7 +43,7 @@ pipeline {
         node(label: 'docker') {
           script {
             checkout scm
-            env.NODEJS_HOME = "${tool 'NodeJS'}"
+            env.NODEJS_HOME = "${tool 'NodeJS22'}"
             env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
             env.CI=false
             sh "npm install --legacy-peer-deps"
