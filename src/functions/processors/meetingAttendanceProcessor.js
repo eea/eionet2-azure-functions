@@ -266,7 +266,7 @@ async function getParticipant(meetingId, email, name) {
     meetingId +
     ' and fields/';
   if (email) {
-    path += "EMail eq '" + email?.replace("'", "''") + "'";
+    path += "EMail eq '" + email?.replaceAll("'", "''") + "'";
   } else {
     path += "Participantname eq '" + name + "'";
   }
