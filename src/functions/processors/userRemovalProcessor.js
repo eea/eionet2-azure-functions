@@ -34,6 +34,7 @@ async function processUserRemoval(context, config, applyRemove) {
         )
       ) {
         user.lastSignInDateTime = activity?.signInActivity?.lastSignInDateTime;
+        user.lastSuccessfulSignInDateTime = activity?.signInActivity?.lastSuccessfulSignInDateTime;
         user.organisationName = organisations?.find(
           (o) => o.id == userFields.OrganisationLookupId,
         )?.fields.Title;
@@ -63,8 +64,8 @@ function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
 
   if (isSignedIn) {
     return (
-      activity.signInActivity.lastSignInDateTime !== null &&
-      new Date(activity.signInActivity.lastSignInDateTime) < lastSignInDate
+      activity.signInActivity.lastSuccessfulSignInDateTime !== null &&
+      new Date(activity.signInActivity.lastSuccessfulSignInDateTime) < lastSignInDate
     );
   } else {
     return new Date(user.createdDateTime) < filterDate;
@@ -73,8 +74,8 @@ function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
 
 async function loadList(listId) {
   let path = encodeURI(
-      apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
-    ),
+    apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
+  ),
     result = [];
 
   while (path) {

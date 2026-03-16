@@ -33,6 +33,7 @@ app.http('UserRemoval', {
               <td>${escapeHtml(fields.SignedIn)}</td>
               <td>${escapeHtml(u.createdDateTime)}</td>
               <td>${escapeHtml(u.lastSignInDateTime)}</td>
+              <td>${escapeHtml(u.lastSuccessfulSignInDateTime)}</td>
             </tr>`;
             })
             .join('');
@@ -47,7 +48,7 @@ app.http('UserRemoval', {
                 <p>The following users can be deleted because they haven't completed the sign-in in the last ${config.RemoveNonSignedInUserNoOfDays} days or they have not had any activity since ${config.UserRemovalLastSignInDateTime}. </p>
                 <table>
                   <thead>
-                    <tr><th>Name</th><th>Email</th><th>Country</th><th>Organisation</th><th>Eionet groups</th><th>Other memberships</th><th>Signed-in</th><th>Created</th><th>Last sign-in</th></tr>
+                    <tr><th>Name</th><th>Email</th><th>Country</th><th>Organisation</th><th>Eionet groups</th><th>Other memberships</th><th>Signed-in</th><th>Created</th><th>Last sign-in</th><th>Last successful sign-in</th></tr>
                   </thead>
                   <tbody>
                     ${stringResult || `<tr><td colspan="2"><em>No rows</em></td></tr>`}

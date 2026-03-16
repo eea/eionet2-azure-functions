@@ -129,6 +129,7 @@ describe('userRemovalProcessor', () => {
       activity = {
         signInActivity: {
           lastSignInDateTime: '2024-03-01',
+          lastSuccessfulSignInDateTime: '2024-03-01',
         },
       },
       filterDate = new Date('2023-04-25'),
@@ -147,6 +148,7 @@ describe('userRemovalProcessor', () => {
       activity = {
         signInActivity: {
           lastSignInDateTime: '2023-03-01',
+          lastSuccessfulSignInDateTime: '2023-03-01',
         },
       },
       filterDate = new Date('2023-04-25'),
@@ -154,7 +156,7 @@ describe('userRemovalProcessor', () => {
     expect(processor.shouldRemoveUser(userData, activity, filterDate, lastSignInDate)).toBe(true);
   });
 
-  test('Signed In 1 with null last sign-in activity is not removed', () => {
+  test('Signed In 1 with null last successful sign-in activity is not removed', () => {
     const { processor } = setupProcessor();
     const userData = {
         createdDateTime: '2023-04-01',
@@ -165,6 +167,26 @@ describe('userRemovalProcessor', () => {
       activity = {
         signInActivity: {
           lastSignInDateTime: null,
+          lastSuccessfulSignInDateTime: null,
+        },
+      },
+      filterDate = new Date('2023-04-25'),
+      lastSignInDate = new Date('2023-08-01');
+    expect(processor.shouldRemoveUser(userData, activity, filterDate, lastSignInDate)).toBe(false);
+  });
+
+  test('Signed In 1 uses last successful sign-in instead of last sign-in for removal', () => {
+    const { processor } = setupProcessor();
+    const userData = {
+        createdDateTime: '2023-04-01',
+        fields: {
+          SignedIn: 1,
+        },
+      },
+      activity = {
+        signInActivity: {
+          lastSignInDateTime: '2023-03-01',
+          lastSuccessfulSignInDateTime: '2024-03-01',
         },
       },
       filterDate = new Date('2023-04-25'),
@@ -240,6 +262,7 @@ describe('userRemovalProcessor', () => {
                 displayName: 'REAL Ionel Ganea',
                 signInActivity: {
                   lastSignInDateTime: '2023-04-01T00:00:00.000Z',
+                  lastSuccessfulSignInDateTime: '2023-04-02T00:00:00.000Z',
                 },
               },
             ],
@@ -277,6 +300,7 @@ describe('userRemovalProcessor', () => {
     expect(result).toHaveLength(1);
     expect(result[0].organisationName).toBe('Organisation Name');
     expect(result[0].lastSignInDateTime).toBe('2023-04-01T00:00:00.000Z');
+    expect(result[0].lastSuccessfulSignInDateTime).toBe('2023-04-02T00:00:00.000Z');
   });
 
   test('processUserRemoval with applyRemove deletes users from AD groups and list', async () => {
@@ -344,7 +368,10 @@ describe('userRemovalProcessor', () => {
             value: [
               {
                 id: 'ad-user-id',
-                signInActivity: { lastSignInDateTime: '2023-01-01T00:00:00.000Z' },
+                signInActivity: {
+                  lastSignInDateTime: '2024-01-01T00:00:00.000Z',
+                  lastSuccessfulSignInDateTime: '2023-01-01T00:00:00.000Z',
+                },
               },
             ],
           },

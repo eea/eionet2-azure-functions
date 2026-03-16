@@ -46,6 +46,7 @@ describe('UserRemoval function', () => {
       {
         createdDateTime: '2020-01-01T00:00:00.000Z',
         lastSignInDateTime: '2021-01-01T00:00:00.000Z',
+        lastSuccessfulSignInDateTime: '2021-02-01T00:00:00.000Z',
         organisationName: 'Org B',
         fields: {
           Title: 'Zulu',
@@ -59,6 +60,7 @@ describe('UserRemoval function', () => {
       {
         createdDateTime: '2020-01-01T00:00:00.000Z',
         lastSignInDateTime: '2021-01-01T00:00:00.000Z',
+        lastSuccessfulSignInDateTime: '2021-02-02T00:00:00.000Z',
         organisationName: 'Org <A>',
         fields: {
           Title: '<Alpha>',
@@ -79,6 +81,8 @@ describe('UserRemoval function', () => {
     expect(response.body).toContain('&lt;Alpha&gt;');
     expect(response.body).toContain('a&#39;o@example.com');
     expect(response.body).toContain('Org &lt;A&gt;');
+    expect(response.body).toContain('Last successful sign-in');
+    expect(response.body).toContain('2021-02-02T00:00:00.000Z');
 
     const alphaIndex = response.body.indexOf('&lt;Alpha&gt;');
     const zuluIndex = response.body.indexOf('Zulu');
