@@ -74,8 +74,8 @@ function shouldRemoveUser(user, activity, filterDate, lastSignInDate) {
 
 async function loadList(listId) {
   let path = encodeURI(
-    apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
-  ),
+      apiConfigWithSite.uri + 'lists/' + listId + '/items?$expand=fields&$top=999',
+    ),
     result = [];
 
   while (path) {
