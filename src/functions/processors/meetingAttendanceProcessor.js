@@ -24,7 +24,7 @@ async function processMeetings(config) {
 }
 
 async function loadMeetings(meetingListId) {
-  //get meetings from last 24 hours or meetings not processed so far
+  //get meetings from last 12 hours or meetings not processed so far
   const nowDate = new Date(),
     last12hours = date.format(
       new Date(nowDate.getTime() - 12 * 60 * 60 * 1000),
@@ -266,7 +266,7 @@ async function getParticipant(meetingId, email, name) {
     meetingId +
     ' and fields/';
   if (email) {
-    path += "EMail eq '" + email?.replace("'", "''") + "'";
+    path += "EMail eq '" + email?.replaceAll("'", "''") + "'";
   } else {
     path += "Participantname eq '" + name + "'";
   }

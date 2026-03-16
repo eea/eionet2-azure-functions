@@ -103,4 +103,18 @@ describe('utils', () => {
       expect(result).toBe('   ');
     });
   });
+
+  describe('escapeHtml', () => {
+    test('escapes special html characters', () => {
+      const result = utils.escapeHtml(`Tom & "Jerry" <script>alert('x')</script>`);
+      expect(result).toBe(
+        'Tom &amp; &quot;Jerry&quot; &lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;',
+      );
+    });
+
+    test('handles null and undefined inputs', () => {
+      expect(utils.escapeHtml(null)).toBe('null');
+      expect(utils.escapeHtml(undefined)).toBe('');
+    });
+  });
 });

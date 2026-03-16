@@ -51,7 +51,7 @@ async function getLookupADUserId(lookupId) {
 //Get AD user by email address
 async function getUserByMail(email) {
   const adResponse = await apiGet(
-    apiConfig.uri + "/users/?$filter=mail eq '" + email?.replace(/'/g, "''") + "'",
+    apiConfig.uri + "/users/?$filter=mail eq '" + email?.replaceAll(/'/g, "''") + "'",
   );
   if (adResponse.success && adResponse.data.value.length) {
     return adResponse.data.value[0];
