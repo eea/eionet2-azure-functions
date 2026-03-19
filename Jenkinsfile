@@ -1,5 +1,7 @@
 pipeline {
-  agent any
+    agent {
+            node { label "docker-host" }
+  }
 
   environment {
         GIT_NAME = "eionet2-azure-functions"
