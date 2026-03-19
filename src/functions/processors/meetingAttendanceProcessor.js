@@ -6,7 +6,7 @@ const logging = require('../lib/logging'),
   date = require('date-and-time'),
   jobName = 'UpdateMeetingParticipants';
 
-let configuration = undefined;
+let configuration;
 
 //Entry point function for meeting processing functionality
 async function processMeetings(config) {
@@ -196,7 +196,7 @@ async function processMeeting(meeting) {
 
 //Process record from attendance report checking if participant already recorded in the meeting participants list.
 async function processAttendanceRecord(meetingFields, attendanceRecord) {
-  let userData = undefined;
+  let userData;
 
   const lowerEmail = attendanceRecord?.emailAddress?.toLowerCase(),
     lowerName = attendanceRecord?.identity?.displayName?.toLowerCase();
@@ -212,7 +212,24 @@ async function processAttendanceRecord(meetingFields, attendanceRecord) {
       //ignore country info if EEA user
       setCountry = userData && !emailAddress.toLowerCase().includes('@eea.europa.eu');
 
-    if (!existingParticipant) {
+    if (existingParticipant) {
+      const participantId = existingParticipant.id,
+        path =
+          apiConfigWithSite.uri +
+          'lists/' +
+          configuration.MeetingParticipantsListId +
+          '/items/' +
+          participantId,
+        response = await apiPatch(path, {
+          fields: {
+            Participated: true,
+          },
+        });
+      if (response.success) {
+        console.log('Meeting participant updated succesfully ' + participantId);
+      }
+      return response.success;
+    } else {
       const record2Save = {
         fields: {
           Participantname: attendanceRecord.identity.displayName,
@@ -231,23 +248,6 @@ async function processAttendanceRecord(meetingFields, attendanceRecord) {
         console.log('Meeting participant added succesfully' + JSON.stringify(record2Save));
       }
 
-      return response.success;
-    } else {
-      const participantId = existingParticipant.id,
-        path =
-          apiConfigWithSite.uri +
-          'lists/' +
-          configuration.MeetingParticipantsListId +
-          '/items/' +
-          participantId,
-        response = await apiPatch(path, {
-          fields: {
-            Participated: true,
-          },
-        });
-      if (response.success) {
-        console.log('Meeting participant updated succesfully ' + participantId);
-      }
       return response.success;
     }
   } catch (error) {
