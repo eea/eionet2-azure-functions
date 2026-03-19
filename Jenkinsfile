@@ -4,7 +4,7 @@ pipeline {
   environment {
         GIT_NAME = "eionet2-azure-functions"
         SONARQUBE_TAGS = "eionet2"
-        DEPENDENCIES = ""
+        PATH = "${tool 'NodeJS22'}/bin:${tool 'SonarQubeScanner'}/bin:$PATH"
     }
 
   stages {
@@ -67,20 +67,15 @@ pipeline {
         }
       }
       steps {
-        node(label: 'swarm') {
           script{
-            def scannerHome = tool 'SonarQubeScanner'
-            def nodeJS = tool 'NodeJS22'
             withSonarQubeEnv('Sonarqube') {
-              sh "export PATH=$PATH:${scannerHome}/bin:${nodeJS}/bin; sonar-scanner -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info -Dsonar.sources=./src  -Dsonar.projectKey=$GIT_NAME -Dsonar.projectName=$GIT_NAME -Dsonar.branch.name=$BRANCH_NAME"
+              sh "sonar-scanner -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info -Dsonar.sources=./src  -Dsonar.projectKey=$GIT_NAME -Dsonar.projectName=$GIT_NAME -Dsonar.branch.name=$BRANCH_NAME"
               sh '''try=2; while [ \$try -gt 0 ]; do curl -s -XPOST -u "${SONAR_AUTH_TOKEN}:" "${SONAR_HOST_URL}api/project_tags/set?project=${GIT_NAME}&tags=${SONARQUBE_TAGS}" > set_tags_result; if [ \$(grep -ic error set_tags_result ) -eq 0 ]; then try=0; else cat set_tags_result; echo "... Will retry"; sleep 60; try=\$(( \$try - 1 )); fi; done'''
             }
-          }
         }
       }
     }
-
-    
+  
     stage('Pull Request') {
       when {
         not {
