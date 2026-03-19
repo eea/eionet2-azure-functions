@@ -135,7 +135,7 @@ Calling the job endpoint directly lists the users that can be removed.
 In order to remove the users it is necessary to add the key applyRemove with value true in the url.
     
     Filters: ((SignedIn = 0 or SignedIn = null) and CreatedDateTime < CurrentTime - configuration.RemoveNonSignedInUserNoOfDays)
-        OR (LastSignDate < configuration.UserRemovalLastSignInDateTime)
+        OR (LastSuccesfullSignDate < configuration.UserRemovalLastSignInDateTime)
     ConfigurationListEntry: RemoveNonSignedInUserNoOfDays
     ConfigurationListEntry: UserRemovalLastSignInDateTime
 
