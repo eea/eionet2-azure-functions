@@ -29,10 +29,10 @@ async function processMeetings(config, context, updateAll = false) {
 async function loadMeetings(meetingListId) {
   //get meetings from last 14 weeks to current date
   const currentDate = new Date(),
-    last8Weeks = new Date(currentDate.setDate(currentDate.getDate() - 14 * 7)),
+    last14Weeks = new Date(currentDate.setDate(currentDate.getDate() - 14 * 7)),
     filterString = _updateAll
       ? ''
-      : "&$filter=fields/Meetingstart ge '" + last8Weeks.toDateString() + "'";
+      : "&$filter=fields/Meetingstart ge '" + last14Weeks.toDateString() + "'";
   const response = await apiGet(
     apiConfigWithSite.uri +
       'lists/' +
@@ -54,6 +54,7 @@ async function processMeeting(meeting) {
     const meetingJoinInfo = await getMeetingJoinInfo(meetingFields),
       meetingParticipants = await getParticipants(meeting.id);
 
+    console.log(meetingFields.Title);
     await patchMeeting(meetingFields, meetingJoinInfo, meetingParticipants);
   } catch (error) {
     await logging.error(configuration, error, jobName);
