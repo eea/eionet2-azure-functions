@@ -45,43 +45,32 @@ pipeline {
                    }
                }
      
-               stage("Unit tests") {
+    stage('Tests') {
       when {
         allOf {
           environment name: 'CHANGE_ID', value: ''
-          not { changelog '.*^Automated release [0-9\\.]+$' }
-          not { branch 'master' }
+          anyOf {
+            branch 'master'
+            allOf {
+              branch 'develop'
+              not { changelog '.*^Automated release [0-9\\.]+$' }
+            }
+          }
         }
       }
-                 steps {   
-                            sh '''set -o pipefail; npm run test --watchAll=false --reporters=default --reporters=jest-junit --collectCoverage --coverageReporters lcov cobertura text 2>&1 | tee -a unit_tests_log.txt'''
-                           
-                         }
-                         post {
-                           always {
-                             
-                           catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                            junit 'junit.xml'
-                            publishHTML (target : [allowMissing: false,
-                             alwaysLinkToLastBuild: true,
-                             keepAll: true,
-                             reportDir: 'coverage/lcov-report',
-                             reportFiles: 'index.html',
-                             reportName: 'UTCoverage',
-                             reportTitles: 'Unit Tests Code Coverage'])
-                             
-                           
-                         }
-                           }
-                           failure {
-                              catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                                    archiveArtifacts artifacts: 'unit_tests_log.txt', fingerprint: true
-                              }  
-                           }
-                         }
-               }
-    
-    
+      steps {
+        node(label: 'docker') {
+          script {
+            checkout scm
+            env.NODEJS_HOME = "${tool 'NodeJS22'}"
+            env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
+            env.CI=false
+            sh "npm install --legacy-peer-deps"
+            sh "npm run pc"
+          }
+        }
+      }
+    }
     
     stage('Report to SonarQube') {
       when {
