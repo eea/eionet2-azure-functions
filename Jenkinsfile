@@ -25,26 +25,6 @@ pipeline {
       }
     }
     
-  
-    stage("Installation for Testing") {
-      when {
-        allOf {
-          environment name: 'CHANGE_ID', value: ''
-          not { changelog '.*^Automated release [0-9\\.]+$' }
-          not { branch 'master' }
-        }
-      }
-      steps {
-                      script{
-                         checkout scm                         
-                         tool 'NodeJS22'
-                         tool 'SonarQubeScanner'
-                         sh "npm install --legacy-peer-deps"
-                         sh "npm run pc"
-                       }
-                   }
-               }
-     
     stage('Tests') {
       when {
         allOf {
