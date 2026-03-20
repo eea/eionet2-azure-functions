@@ -61,11 +61,11 @@ pipeline {
                            always {
                              
                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                            junit 'tabs/junit.xml'
+                            junit 'junit.xml'
                             publishHTML (target : [allowMissing: false,
                              alwaysLinkToLastBuild: true,
                              keepAll: true,
-                             reportDir: 'tabs/coverage/lcov-report',
+                             reportDir: 'coverage/lcov-report',
                              reportFiles: 'index.html',
                              reportName: 'UTCoverage',
                              reportTitles: 'Unit Tests Code Coverage'])
@@ -75,7 +75,7 @@ pipeline {
                            }
                            failure {
                               catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                                    archiveArtifacts artifacts: 'tabs/unit_tests_log.txt', fingerprint: true
+                                    archiveArtifacts artifacts: 'unit_tests_log.txt', fingerprint: true
                               }  
                            }
                          }
