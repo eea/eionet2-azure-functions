@@ -25,7 +25,7 @@ pipeline {
       }
     }
     
-    stage('Tests') {
+	    stage('Tests') {
       when {
         allOf {
           environment name: 'CHANGE_ID', value: ''
@@ -37,20 +37,17 @@ pipeline {
             }
           }
         }
-      }
-      steps {
-        node(label: 'docker') {
-          script {
-            checkout scm
-            env.NODEJS_HOME = "${tool 'NodeJS22'}"
-            env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
-            env.CI=false
-            sh "npm install --legacy-peer-deps"
-            sh "npm run pc"
-          }
-        }
-      }
-    }
+	      }
+	      steps {
+	        script {
+	          env.NODEJS_HOME = "${tool 'NodeJS22'}"
+	          env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
+	          env.CI=false
+	          sh "npm install --legacy-peer-deps"
+	          sh "npm run pc"
+	        }
+	      }
+	    }
     
     stage('Report to SonarQube') {
       when {
