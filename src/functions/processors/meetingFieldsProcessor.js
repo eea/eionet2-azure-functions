@@ -82,13 +82,24 @@ async function getMeetingJoinInfo(meeting) {
         );
         if (response.success && response.data.value && response.data.value.length > 0) {
           return response.data.value[0];
-        } else {
+        } else if (response.success) {
+          //Graph responded successfully but no meeting matched — genuine
+          //organiser/code mismatch (this path only runs for future meetings,
+          //so the 60-day retention window does not apply here).
           await logging.error(
             configuration,
             `Meeting link for ${meeting.Title} could not be generated. Check that the meeting organiser ${adUser?.mail} and meeting code are correct`,
             jobName,
             undefined,
             adUser?.mail,
+          );
+        } else {
+          //Generic Microsoft Graph failure — do not blame the organiser.
+          await logging.error(
+            configuration,
+            response.error,
+            jobName,
+            `Unable to retrieve meeting link for ${meeting.Title}. Microsoft Graph request failed.`,
           );
         }
       }
