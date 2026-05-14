@@ -874,4 +874,99 @@ describe('meetingFieldsProcessor', () => {
     const result = await processor.processMeetings(null, mockContext);
     expect(result).toBeInstanceOf(Error);
   });
+
+  test('logs an organiser-targeted error when Graph returns an empty meeting list for a future meeting', async () => {
+    const mockConfig = {
+      MeetingListId: 'meeting-list-id',
+      MeetingParticipantsListId: 'participants-list-id',
+    };
+    const mockContext = { log: jest.fn() };
+
+    const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const futureMeeting = {
+      fields: {
+        ...validMeetingObject.fields,
+        Meetingstart: futureStart,
+      },
+    };
+
+    apiGet.mockImplementation((url) => {
+      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
+        return Promise.resolve({ success: true, data: { value: [futureMeeting] } });
+      }
+      if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
+        return Promise.resolve({ success: true, data: { value: [] } });
+      }
+      if (url.includes('participants-list-id') && url.includes('MeetingtitleLookupId eq')) {
+        return Promise.resolve({ success: true, data: { value: [] } });
+      }
+      if (url.includes('items/2') && !url.includes('items?$expand=fields')) {
+        return Promise.resolve({ success: true, data: { fields: { Title: 'Test Meeting' } } });
+      }
+      return Promise.resolve({ success: false, data: null });
+    });
+
+    userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
+    userHelper.getADUser.mockResolvedValue({ mail: 'organiser@example.com' });
+    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
+    date.format.mockReturnValue('2022-01-28');
+
+    const logging = require('../lib/logging');
+    await processor.processMeetings(mockConfig, mockContext);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      mockConfig,
+      'Meeting link for First EEA-Eionet editorial meeting could not be generated. Check that the meeting organiser organiser@example.com and meeting code are correct',
+      'UpdateMeetingFields',
+      undefined,
+      'organiser@example.com',
+    );
+  });
+
+  test('logs a generic API error (no organiser email) when the Graph request fails for a future meeting', async () => {
+    const mockConfig = {
+      MeetingListId: 'meeting-list-id',
+      MeetingParticipantsListId: 'participants-list-id',
+    };
+    const mockContext = { log: jest.fn() };
+
+    const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const futureMeeting = {
+      fields: {
+        ...validMeetingObject.fields,
+        Meetingstart: futureStart,
+      },
+    };
+
+    apiGet.mockImplementation((url) => {
+      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
+        return Promise.resolve({ success: true, data: { value: [futureMeeting] } });
+      }
+      if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
+        return Promise.resolve({ success: false, error: 'graph 503' });
+      }
+      if (url.includes('participants-list-id') && url.includes('MeetingtitleLookupId eq')) {
+        return Promise.resolve({ success: true, data: { value: [] } });
+      }
+      if (url.includes('items/2') && !url.includes('items?$expand=fields')) {
+        return Promise.resolve({ success: true, data: { fields: { Title: 'Test Meeting' } } });
+      }
+      return Promise.resolve({ success: false, data: null });
+    });
+
+    userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
+    userHelper.getADUser.mockResolvedValue({ mail: 'organiser@example.com' });
+    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
+    date.format.mockReturnValue('2022-01-28');
+
+    const logging = require('../lib/logging');
+    await processor.processMeetings(mockConfig, mockContext);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      mockConfig,
+      'graph 503',
+      'UpdateMeetingFields',
+      'Unable to retrieve meeting link for First EEA-Eionet editorial meeting. Microsoft Graph request failed.',
+    );
+  });
 });

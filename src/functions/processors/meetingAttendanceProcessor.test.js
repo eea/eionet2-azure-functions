@@ -1,6 +1,5 @@
 const processor = require('./meetingAttendanceProcessor');
 
-// Mock all dependencies
 jest.mock('../lib/logging', () => ({
   error: jest.fn(),
   info: jest.fn(),
@@ -17,7 +16,7 @@ jest.mock('../lib/graphClient', () => ({
     uri: 'https://test.sharepoint.com/sites/test/',
   },
   apiConfig: {
-    uri: 'https://test.sharepoint.com/sites/test/',
+    uri: 'https://graph.microsoft.com/v1.0/',
   },
 }));
 
@@ -35,324 +34,357 @@ jest.mock('date-and-time', () => ({
   format: jest.fn(),
 }));
 
-// Get the mocked functions
+const logging = require('../lib/logging');
 const { apiGet, apiPost, apiPatch } = require('../lib/provider');
 const userHelper = require('../lib/helpers/userHelper');
 const utils = require('../lib/helpers/utils');
+const date = require('date-and-time');
+
+const baseConfig = {
+  MeetingListId: 'meeting-list-id',
+  MeetingParticipantsListId: 'participants-list-id',
+};
 
 const meetingObject = {
-    createdBy: {
-      user: {
-        email: 'mg.nicolae@7lcpdm.onmicrosoft.com',
-        id: '3c45ac4d-e740-4681-aacd-f558dde7cf2d',
-        displayName: 'Gabriel-Mihai Nicolae (MK)',
-      },
-    },
-    fields: {
-      id: '2',
-      ContentType: 'Item',
-      Title: 'First EEA-Eionet editorial meeting',
-      Modified: '2022-06-22T12:23:56Z',
-      Created: '2022-06-07T14:25:47Z',
-      AuthorLookupId: '10',
-      EditorLookupId: '1073741822',
-      _UIVersionString: '21.0',
-      Attachments: false,
-      Edit: '',
-      LinkTitleNoMenu: 'First EEA-Eionet editorial meeting',
-      LinkTitle: 'First EEA-Eionet editorial meeting',
-      ItemChildCount: '0',
-      FolderChildCount: '0',
-      _ComplianceFlags: '',
-      _ComplianceTag: '',
-      _ComplianceTagWrittenTime: '',
-      _ComplianceTagUserId: '',
-      AppEditorLookupId: '30',
-      Meetingstart: '2022-01-28T09:00:00Z',
-      Meetingend: '2022-01-28T10:30:00Z',
-      MeetingmanagerLookupId: '30',
-      Group: 'Communications',
-      JoinMeetingId: '256 856 969',
-      Linktofolder: {
-        Description: 'Meeting folder',
-        Url: 'https://eea1.sharepoint.com/:f:/r/teams/-EXT-Eionet/Shared%20Documents/Communications/Editorial%20meetings/First%20Editorial%20Meeting%20-%2028-01-22?csf=1&web=1&e=aaQMOE',
-      },
-    },
+  fields: {
+    id: '2',
+    Title: 'First EEA-Eionet editorial meeting',
+    Meetingstart: '2022-01-28T09:00:00Z',
+    Meetingend: '2022-01-28T10:30:00Z',
+    MeetingmanagerLookupId: '30',
+    JoinMeetingId: '256 856 969',
+    Processedreports: '',
   },
-  attedanceRecord = {
-    id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-    emailAddress: 'test@test.com',
-    identity: {
-      displayName: 'Test Display Name',
-    },
-  };
+};
+
+const attendanceRecord = {
+  id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
+  emailAddress: 'test@test.com',
+  identity: {
+    displayName: 'Test Display Name',
+  },
+};
+
+function buildApiGet({
+  meetings = [meetingObject],
+  onlineMeetings = [{ id: 'online-meeting-id' }],
+  attendanceReports = [{ id: 'report-1' }],
+  attendanceDetails = { success: true, data: { attendanceRecords: [attendanceRecord] } },
+  existingParticipants = [],
+  meetingItem = { fields: { Processed: false, Processedreports: '' } },
+  attendanceReportsSuccess = true,
+  meetingLookupSuccess = true,
+  participantsLookupSuccess = true,
+}) {
+  return jest.fn((url) => {
+    if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
+      return Promise.resolve({
+        success: true,
+        data: { value: meetings },
+      });
+    }
+
+    if (url.includes("/onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq '")) {
+      return Promise.resolve({
+        success: meetingLookupSuccess,
+        data: { value: onlineMeetings },
+        error: meetingLookupSuccess ? undefined : 'meeting lookup failed',
+      });
+    }
+
+    if (
+      url.includes('/onlineMeetings/online-meeting-id/attendanceReports') &&
+      !url.includes('?$expand=attendanceRecords')
+    ) {
+      return Promise.resolve({
+        success: attendanceReportsSuccess,
+        data: { value: attendanceReports },
+        error: attendanceReportsSuccess ? undefined : 'attendance reports failed',
+      });
+    }
+
+    if (url.includes('/attendanceReports/') && url.includes('?$expand=attendanceRecords')) {
+      return Promise.resolve(attendanceDetails);
+    }
+
+    if (url.includes('participants-list-id') && url.includes('MeetingtitleLookupId eq')) {
+      return Promise.resolve({
+        success: participantsLookupSuccess,
+        data: { value: existingParticipants },
+      });
+    }
+
+    if (url.endsWith('/lists/meeting-list-id/items/2')) {
+      return Promise.resolve({
+        success: true,
+        data: meetingItem,
+      });
+    }
+
+    return Promise.resolve({ success: false, data: null });
+  });
+}
 
 describe('meetingAttendanceProcessor', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  test('processMeetings', async () => {
-    const mockConfig = {
-      MeetingListId: 'meeting-list-id',
-      MeetingParticipantsListId: 'participants-list-id',
-    };
-
-    // Mock the API calls
-    apiGet.mockImplementation((url) => {
-      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [meetingObject],
-          },
-        });
-      } else if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [
-              {
-                id: '9950274a-ba4b-40e1-92d8-8468cced65e3',
-              },
-            ],
-          },
-        });
-      } else if (
-        url.includes('onlineMeetings/9950274a-ba4b-40e1-92d8-8468cced65e3/attendanceReports') &&
-        !url.includes('attendanceRecords')
-      ) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [
-              {
-                id: 'ae40523c-d750-41f5-9873-6346b474e5fb',
-              },
-            ],
-          },
-        });
-      } else if (url.includes('attendanceRecords')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            attendanceRecords: [attedanceRecord],
-          },
-        });
-      } else if (url.includes('participants-list-id') && url.includes('MeetingtitleLookupId eq')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [],
-          },
-        });
-      } else if (url.includes('items/2') && !url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            fields: {
-              Processed: false,
-              Processedreports: '',
-            },
-          },
-        });
-      }
-      return Promise.resolve({ success: false, data: null });
-    });
-
-    apiPost.mockImplementation(() =>
-      Promise.resolve({
-        success: true,
-        data: { id: 'new-participant-id' },
-      }),
-    );
-
-    apiPatch.mockImplementation(() =>
-      Promise.resolve({
-        success: true,
-        data: { id: '2' },
-      }),
-    );
-
-    // Mock helper functions
+    date.format.mockReturnValue('2026-03-20T12:00:00');
     userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
     userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
     userHelper.getUserByMail.mockResolvedValue({ country: 'RO' });
     utils.parseJoinMeetingId.mockReturnValue('256 856 969');
-
-    const result = await processor.processMeetings(mockConfig);
-    expect(result).toBeUndefined();
+    apiPost.mockResolvedValue({ success: true, data: { id: 'new-participant-id' } });
+    apiPatch.mockResolvedValue({ success: true, data: { id: '2' } });
   });
 
-  test('no attendace reports', async () => {
-    const mockConfig = {
-      MeetingListId: 'meeting-list-id',
-      MeetingParticipantsListId: 'participants-list-id',
-    };
+  test('creates a new participant and patches the meeting with processed reports', async () => {
+    apiGet.mockImplementation(buildApiGet({}));
 
-    apiGet.mockImplementation((url) => {
-      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [meetingObject],
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/participants-list-id/items',
+      {
+        fields: {
+          Participantname: 'Test Display Name',
+          Countries: 'RO',
+          MeetingtitleLookupId: '2',
+          EMail: 'test@test.com',
+          Participated: true,
+        },
+      },
+    );
+    expect(apiPatch).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/meeting-list-id/items/2',
+      {
+        fields: {
+          Processedreports: 'report-1',
+          Processed: true,
+        },
+      },
+    );
+    expect(logging.info).toHaveBeenCalledWith(
+      baseConfig,
+      'Meeting updated succesfully : First EEA-Eionet editorial meeting',
+      '',
+      'report-1',
+      'UpdateMeetingParticipants',
+    );
+  });
+
+  test('updates an existing participant instead of creating a new one', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        existingParticipants: [{ id: 'participant-1' }],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(apiPatch).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/participants-list-id/items/participant-1',
+      {
+        fields: {
+          Participated: true,
+        },
+      },
+    );
+  });
+
+  test('skips already processed reports', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetings: [
+          {
+            fields: {
+              ...meetingObject.fields,
+              Processedreports: 'report-1',
+            },
           },
-        });
-      } else if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
-        return Promise.resolve({
+        ],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(apiPatch).not.toHaveBeenCalled();
+  });
+
+  test('does not set country for eea addresses', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        attendanceDetails: {
           success: true,
           data: {
-            value: [
+            attendanceRecords: [
               {
-                id: '9950274a-ba4b-40e1-92d8-8468cced65e3',
+                ...attendanceRecord,
+                emailAddress: 'test@eea.europa.eu',
               },
             ],
           },
-        });
-      } else if (
-        url.includes('onlineMeetings/9950274a-ba4b-40e1-92d8-8468cced65e3/attendanceReports')
-      ) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [],
-          },
-        });
-      } else if (url.includes('items/2') && !url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
+        },
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        fields: expect.not.objectContaining({
+          Countries: 'RO',
+        }),
+      }),
+    );
+  });
+
+  test('logs and skips processing when meeting manager is missing', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetings: [
+          {
             fields: {
-              Processed: false,
-              Processedreports: '',
+              ...meetingObject.fields,
+              MeetingmanagerLookupId: null,
             },
           },
-        });
-      }
-      return Promise.resolve({ success: false, data: null });
-    });
-
-    userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
-    userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
-    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
-
-    const result = await processor.processMeetings(mockConfig);
-    expect(result).toBeUndefined();
-  });
-
-  test('missing meeting manager', async () => {
-    const mockConfig = {
-      MeetingListId: 'meeting-list-id',
-      MeetingParticipantsListId: 'participants-list-id',
-    };
-
-    const meetingWithoutManager = {
-      createdBy: {
-        user: {
-          email: 'mg.nicolae@7lcpdm.onmicrosoft.com',
-          id: '3c45ac4d-e740-4681-aacd-f558dde7cf2d',
-          displayName: 'Gabriel-Mihai Nicolae (MK)',
-        },
-      },
-      fields: {
-        id: '2',
-        Title: 'Test Meeting',
-        MeetingmanagerLookupId: null,
-        JoinMeetingId: '256 856 969',
-      },
-    };
-
-    apiGet.mockImplementation((url) => {
-      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [meetingWithoutManager],
-          },
-        });
-      }
-      return Promise.resolve({ success: false, data: null });
-    });
-
+        ],
+      }),
+    );
     userHelper.getLookupADUserId.mockResolvedValue(null);
-    userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
-    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
 
-    const result = await processor.processMeetings(mockConfig);
-    expect(result).toBeUndefined();
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'Missing meeting manager for meeting id: 2',
+      'UpdateMeetingParticipants',
+    );
+    expect(apiPost).not.toHaveBeenCalled();
   });
 
-  test('missing meeting id', async () => {
-    const mockConfig = {
-      MeetingListId: 'meeting-list-id',
-      MeetingParticipantsListId: 'participants-list-id',
-    };
+  test('logs invalid join meeting id and does not continue', async () => {
+    apiGet.mockImplementation(buildApiGet({}));
+    utils.parseJoinMeetingId.mockReturnValue(undefined);
 
-    const meetingWithoutId = {
-      createdBy: {
-        user: {
-          email: 'mg.nicolae@7lcpdm.onmicrosoft.com',
-          id: '3c45ac4d-e740-4681-aacd-f558dde7cf2d',
-          displayName: 'Gabriel-Mihai Nicolae (MK)',
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(apiPatch).not.toHaveBeenCalled();
+    expect(logging.error).not.toHaveBeenCalled();
+  });
+
+  test('logs when meeting and organizer do not match', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        onlineMeetings: [],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'Meeting *ID:2* First EEA-Eionet editorial meeting and organizer test@example.com has wrong organizer specified.',
+      'UpdateMeetingParticipants',
+      undefined,
+      'test@example.com',
+    );
+  });
+
+  test('logs when attendance reports cannot be loaded', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        attendanceReportsSuccess: false,
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'attendance reports failed',
+      'UpdateMeetingParticipants',
+      'Meeting *ID:2* First EEA-Eionet editorial meeting and organizer test@example.com has wrong organizer specified.',
+      'test@example.com',
+    );
+  });
+
+  test('logs when attendance report details cannot be loaded', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        attendanceDetails: { success: false, data: null },
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'Unable to load attendanceRecords for meeting First EEA-Eionet editorial meeting and organizer with id user-id-123',
+      'UpdateMeetingParticipants',
+    );
+  });
+
+  test('does not patch the meeting when there are no attendance reports', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        attendanceReports: [],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(apiPatch).not.toHaveBeenCalled();
+  });
+
+  test('patches the meeting with empty processed reports when saving a participant fails', async () => {
+    apiGet.mockImplementation(buildApiGet({}));
+    apiPost.mockResolvedValue({ success: false, data: null });
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).not.toHaveBeenCalled();
+    expect(apiPatch).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/meeting-list-id/items/2',
+      {
+        fields: {
+          Processedreports: '',
+          Processed: true,
         },
       },
-      fields: {
-        Title: 'Test Meeting',
-        MeetingmanagerLookupId: '30',
-        JoinMeetingId: '256 856 969',
-      },
-    };
-
-    apiGet.mockImplementation((url) => {
-      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [meetingWithoutId],
-          },
-        });
-      }
-      return Promise.resolve({ success: false, data: null });
-    });
-
-    userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
-    userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
-    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
-
-    const result = await processor.processMeetings(mockConfig);
-    expect(result).toBeUndefined();
+    );
   });
 
-  test('wrong combination id and manager', async () => {
-    const mockConfig = {
-      MeetingListId: 'meeting-list-id',
-      MeetingParticipantsListId: 'participants-list-id',
-    };
-
-    apiGet.mockImplementation((url) => {
-      if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [meetingObject],
+  test('does not patch the meeting when it is already up to date', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetingItem: {
+          fields: {
+            Processed: true,
+            Processedreports: 'report-1',
           },
-        });
-      } else if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
-        return Promise.resolve({
-          success: true,
-          data: {
-            value: [],
-          },
-        });
-      }
-      return Promise.resolve({ success: false, data: null });
-    });
+        },
+      }),
+    );
 
-    userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
-    userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
-    utils.parseJoinMeetingId.mockReturnValue('256 856 969');
+    await processor.processMeetings(baseConfig);
 
-    const result = await processor.processMeetings(mockConfig);
-    expect(result).toBeUndefined();
+    expect(apiPatch).toHaveBeenCalledTimes(0);
+    expect(logging.info).not.toHaveBeenCalled();
+  });
+
+  test('returns an error when loading meetings throws', async () => {
+    const failure = new Error('boom');
+    apiGet.mockRejectedValue(failure);
+
+    const result = await processor.processMeetings(baseConfig);
+
+    expect(result).toBe(failure);
+    expect(logging.error).toHaveBeenCalledWith(baseConfig, failure, 'UpdateMeetingParticipants');
   });
 });
