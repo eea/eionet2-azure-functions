@@ -41,7 +41,7 @@ async function getLookupADUserId(lookupId) {
 
       return undefined;
     } catch (error) {
-      await error(configuration, error, jobName);
+      await logging.error(configuration, error, jobName);
       return undefined;
     }
   }

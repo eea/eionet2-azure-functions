@@ -21,7 +21,7 @@ async function processMeetings(config, context, updateAll = false) {
       await processMeeting(meeting);
     }
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }

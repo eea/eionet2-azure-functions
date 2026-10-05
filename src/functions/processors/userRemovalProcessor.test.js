@@ -2,6 +2,7 @@ function setupProcessor() {
   jest.resetModules();
 
   jest.doMock('../lib/logging', () => ({
+    PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
     error: jest.fn(),
     info: jest.fn(),
   }));
@@ -489,6 +490,13 @@ describe('userRemovalProcessor', () => {
     const result = await processor.processUserRemoval({ log: jest.fn() }, config, false);
 
     expect(result).toBe(err);
-    expect(logging.error).toHaveBeenCalledWith(config, err, 'UserRemoval');
+    expect(logging.error).toHaveBeenCalledWith(
+      config,
+      err,
+      'UserRemoval',
+      undefined,
+      undefined,
+      logging.PRIORITY.HIGH,
+    );
   });
 });

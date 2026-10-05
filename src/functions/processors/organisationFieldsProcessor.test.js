@@ -2,6 +2,7 @@ const processor = require('./organisationFieldsProcessor');
 
 // Mock all dependencies
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
 }));
 

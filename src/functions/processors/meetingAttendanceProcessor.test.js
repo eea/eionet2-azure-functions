@@ -1,6 +1,7 @@
 const processor = require('./meetingAttendanceProcessor');
 
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
   info: jest.fn(),
 }));
@@ -28,6 +29,8 @@ jest.mock('../lib/helpers/userHelper', () => ({
 
 jest.mock('../lib/helpers/utils', () => ({
   parseJoinMeetingId: jest.fn(),
+  isMeetingBeyondRetention: jest.fn(),
+  MEETING_RETENTION_DAYS: 60,
 }));
 
 jest.mock('date-and-time', () => ({
@@ -54,6 +57,7 @@ const meetingObject = {
     MeetingmanagerLookupId: '30',
     JoinMeetingId: '256 856 969',
     Processedreports: '',
+    GraphMeetingId: 'online-meeting-id',
   },
 };
 
@@ -133,6 +137,7 @@ describe('meetingAttendanceProcessor', () => {
     userHelper.getADUser.mockResolvedValue({ mail: 'test@example.com' });
     userHelper.getUserByMail.mockResolvedValue({ country: 'RO' });
     utils.parseJoinMeetingId.mockReturnValue('256 856 969');
+    utils.isMeetingBeyondRetention.mockReturnValue(false);
     apiPost.mockResolvedValue({ success: true, data: { id: 'new-participant-id' } });
     apiPatch.mockResolvedValue({ success: true, data: { id: '2' } });
   });
@@ -295,7 +300,7 @@ describe('meetingAttendanceProcessor', () => {
     );
   });
 
-  test('logs when attendance reports cannot be loaded', async () => {
+  test('logs a generic API error (no organiser email) when attendance reports request fails', async () => {
     apiGet.mockImplementation(
       buildApiGet({
         attendanceReportsSuccess: false,
@@ -308,8 +313,44 @@ describe('meetingAttendanceProcessor', () => {
       baseConfig,
       'attendance reports failed',
       'UpdateMeetingParticipants',
-      'Meeting *ID:2* First EEA-Eionet editorial meeting and organizer test@example.com has wrong organizer specified.',
-      'test@example.com',
+      'Unable to retrieve attendance reports for Meeting *ID:2* First EEA-Eionet editorial meeting. Microsoft Graph request failed.',
+    );
+  });
+
+  test('logs as info (no organiser email) when meeting is beyond the 60-day retention window', async () => {
+    utils.isMeetingBeyondRetention.mockReturnValue(true);
+    apiGet.mockImplementation(
+      buildApiGet({
+        onlineMeetings: [],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).not.toHaveBeenCalled();
+    expect(logging.info).toHaveBeenCalledWith(
+      baseConfig,
+      'Meeting *ID:2* First EEA-Eionet editorial meeting is no longer available in Microsoft Graph (meeting ended more than 60 days ago). Skipping.',
+      undefined,
+      undefined,
+      'UpdateMeetingParticipants',
+    );
+  });
+
+  test('logs a generic API error (no organiser email) when meeting lookup request fails', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetingLookupSuccess: false,
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'meeting lookup failed',
+      'UpdateMeetingParticipants',
+      'Unable to look up Meeting *ID:2* First EEA-Eionet editorial meeting via Microsoft Graph. Request failed.',
     );
   });
 
@@ -378,6 +419,47 @@ describe('meetingAttendanceProcessor', () => {
     expect(logging.info).not.toHaveBeenCalled();
   });
 
+  test('stores the resolved Graph meeting id when it is not yet saved on the record', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetings: [
+          {
+            fields: {
+              ...meetingObject.fields,
+              GraphMeetingId: undefined,
+            },
+          },
+        ],
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPatch).toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/meeting-list-id/items/2',
+      {
+        fields: {
+          GraphMeetingId: 'online-meeting-id',
+        },
+      },
+    );
+  });
+
+  test('does not re-store the Graph meeting id when it is already saved', async () => {
+    apiGet.mockImplementation(buildApiGet({}));
+
+    await processor.processMeetings(baseConfig);
+
+    expect(apiPatch).not.toHaveBeenCalledWith(
+      'https://test.sharepoint.com/sites/test/lists/meeting-list-id/items/2',
+      {
+        fields: {
+          GraphMeetingId: 'online-meeting-id',
+        },
+      },
+    );
+  });
+
   test('returns an error when loading meetings throws', async () => {
     const failure = new Error('boom');
     apiGet.mockRejectedValue(failure);
@@ -385,6 +467,13 @@ describe('meetingAttendanceProcessor', () => {
     const result = await processor.processMeetings(baseConfig);
 
     expect(result).toBe(failure);
-    expect(logging.error).toHaveBeenCalledWith(baseConfig, failure, 'UpdateMeetingParticipants');
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      failure,
+      'UpdateMeetingParticipants',
+      undefined,
+      undefined,
+      logging.PRIORITY.HIGH,
+    );
   });
 });

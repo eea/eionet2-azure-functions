@@ -3,6 +3,7 @@ function setupTagHelper() {
 
   jest.doMock('../../lib/logging', () => ({
     info: jest.fn(),
+    error: jest.fn(),
   }));
 
   jest.doMock('../../lib/provider', () => ({
@@ -143,7 +144,7 @@ describe('tagHelper', () => {
     expect(logging.info).not.toHaveBeenCalled();
   });
 
-  test('adds user to existing tag member list and logs error response', async () => {
+  test('adds user to existing tag member list and logs error response as Error', async () => {
     const { tagHelper, logging, apiGet, apiPost, countryMappingHelper } = setupTagHelper();
 
     await tagHelper.initialize('UserMembership', { MainEionetGroupId: 'main-group' });
@@ -187,12 +188,12 @@ describe('tagHelper', () => {
       'https://graph.test/v1.0/teams/team-id/tags/country-tag/members',
       { userId: 'user-id' },
     );
-    expect(logging.info).toHaveBeenCalledWith(
+    expect(logging.error).toHaveBeenCalledWith(
       { MainEionetGroupId: 'main-group' },
-      'Applying the tag Member for user with email test@example.com returned an error. Please check the tag.',
-      '',
-      {},
+      undefined,
       'UserMembership',
+      'Applying the tag Member for user with email test@example.com returned an error. Please check the tag.',
     );
+    expect(logging.info).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ const processor = require('./meetingFieldsProcessor');
 
 // Mock all dependencies
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
 }));
 
@@ -33,6 +34,7 @@ jest.mock('date-and-time', () => ({
 }));
 
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
 }));
 

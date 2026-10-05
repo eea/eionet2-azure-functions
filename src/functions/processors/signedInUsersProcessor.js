@@ -20,7 +20,7 @@ async function processSignedInUsers(config) {
       await processUser(user);
     }
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }
@@ -110,10 +110,11 @@ async function processUser(user) {
           }
         }
       } else {
-        await logging.error(
+        await logging.warning(
           configuration,
-
           'User was not found in AD: ' + userFields.Title,
+          '',
+          '',
           jobName,
         );
       }

@@ -56,7 +56,7 @@ async function processFlows(configuration) {
 
     console.log('Total number of data flows removed: ' + flows2Remove.length);
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }

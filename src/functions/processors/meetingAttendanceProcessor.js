@@ -18,7 +18,7 @@ async function processMeetings(config) {
       await processMeeting(meeting);
     }
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }
@@ -63,6 +63,17 @@ async function processMeeting(meeting) {
     );
     return;
   }
+  const meetingLabel = `Meeting *ID:${meetingFields.id}* ${meetingTitle}`;
+  const beyondRetention = utils.isMeetingBeyondRetention(meetingFields.Meetingend);
+  const logUnavailable = () =>
+    logging.info(
+      configuration,
+      `${meetingLabel} is no longer available in Microsoft Graph (meeting ended more than ${utils.MEETING_RETENTION_DAYS} days ago). Skipping.`,
+      undefined,
+      undefined,
+      jobName,
+    );
+
   try {
     const joinMeetingId = utils.parseJoinMeetingId(meetingFields.JoinMeetingId);
     if (joinMeetingId) {
@@ -80,6 +91,12 @@ async function processMeeting(meeting) {
 
       if (meetingResponse.success && meetingResponse.data.value.length) {
         const meetingId = meetingResponse.data.value[0].id;
+
+        //store the resolved Graph meeting id on the event record so it stays
+        //available after the join-code lookup expires (60-day retention)
+        if (meetingFields.GraphMeetingId !== meetingId) {
+          await saveMeetingId(meetingFields.id, meetingId);
+        }
 
         //load all attendance reports for meeting
         const attendanceReportsResponse = await apiGet(
@@ -165,23 +182,44 @@ async function processMeeting(meeting) {
               )}`,
             );
           }
+        } else if (beyondRetention) {
+          //Data no longer available through MS Graph (>60 days). Info log
+          //only — no affected user, so organisers are not emailed.
+          await logUnavailable();
+          return false;
         } else {
+          //Genuine API failure, not a misconfigured organiser.
           await logging.error(
             configuration,
             attendanceReportsResponse.error,
             jobName,
-            `Meeting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
-            adUser?.mail,
+            `Unable to retrieve attendance reports for ${meetingLabel}. Microsoft Graph request failed.`,
           );
           return false;
         }
+      } else if (meetingResponse.success) {
+        //Graph returned a successful response but no meeting matched the
+        //join id + organiser combination — either retention purge or a
+        //genuine organiser/code mismatch.
+        if (beyondRetention) {
+          await logUnavailable();
+        } else {
+          await logging.error(
+            configuration,
+            `${meetingLabel} and organizer ${adUser?.mail} has wrong organizer specified.`,
+            jobName,
+            undefined,
+            adUser?.mail,
+          );
+        }
+        return meetingResponse.error;
       } else {
+        //Meeting lookup request failed — generic API error, not a mismatch.
         await logging.error(
           configuration,
-          `Meeting *ID:${meetingFields.id}* ${meetingTitle} and organizer ${adUser?.mail} has wrong organizer specified.`,
+          meetingResponse.error,
           jobName,
-          undefined,
-          adUser?.mail,
+          `Unable to look up ${meetingLabel} via Microsoft Graph. Request failed.`,
         );
         return meetingResponse.error;
       }
@@ -277,6 +315,24 @@ async function getParticipant(meetingId, email, name) {
   }
 
   return undefined;
+}
+
+//Persist the resolved Graph meeting id on the event record. Best-effort: a
+//failure here (e.g. the column does not exist yet) must not stop attendance
+//processing, so it is only logged to the console, not raised as an alert.
+async function saveMeetingId(meetingRecordId, meetingId) {
+  try {
+    const path =
+      apiConfigWithSite.uri + 'lists/' + configuration.MeetingListId + '/items/' + meetingRecordId;
+    await apiPatch(path, {
+      fields: {
+        GraphMeetingId: meetingId,
+      },
+    });
+    console.log('Stored Graph meeting id for meeting record ' + meetingRecordId);
+  } catch (error) {
+    console.log('Unable to store Graph meeting id for meeting record ' + meetingRecordId, error);
+  }
 }
 
 //Save processed attedance reports to meeting sharepoint record.

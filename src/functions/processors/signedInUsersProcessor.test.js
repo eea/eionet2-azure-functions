@@ -2,8 +2,10 @@ const processor = require('./signedInUsersProcessor');
 
 // Mock all dependencies
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
   info: jest.fn(),
+  warning: jest.fn(),
 }));
 
 jest.mock('../lib/provider', () => ({
@@ -458,8 +460,18 @@ describe('signedInUsersProcessor', () => {
 
     userHelper.getADUser.mockResolvedValue(null);
 
+    const logging = require('../lib/logging');
+
     const result = await processor.processSignedInUsers(mockConfig);
     expect(result).toBeUndefined();
+    expect(logging.warning).toHaveBeenCalledWith(
+      mockConfig,
+      'User was not found in AD: Test User',
+      '',
+      '',
+      'UpdateSignedInUsers',
+    );
+    expect(logging.error).not.toHaveBeenCalled();
   });
 
   test('should handle API failures in loadUsers', async () => {

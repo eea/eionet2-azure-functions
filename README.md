@@ -58,6 +58,8 @@ THis is to capture a) Older meetings, which have not been captured by the script
 
     Filters: (Processed = 0 AND MeetingStart <= Current time) OR (Processed = 1 AND MeetingEnd >= (Current time - 12 hours))
 
+**Microsoft Graph 60-day limit:** Microsoft only exposes online meeting data — including the join-code → meeting-id lookup this job relies on — for **60 days** after a meeting. For older meetings the lookup returns an empty result, so their attendance can no longer be retrieved through Graph. When that happens the job logs an informational entry ("no longer available") instead of raising a "wrong organiser" alert, so organisers are not emailed about data that has simply expired. A genuinely misconfigured organiser (recent meeting, no match) and a failed Graph request are still reported distinctly. To keep the internal meeting id usable beyond the 60-day window, the job stores it on the event record (*GraphMeetingId*) the first time it is resolved.
+
 ### MeetingFields    
 
     Config key: AzureWebJobs.MeetingFields.Disabled

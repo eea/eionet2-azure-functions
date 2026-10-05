@@ -53,7 +53,7 @@ async function processUserRemoval(context, config, applyRemove) {
       console.log('No users to remove.');
     }
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }
