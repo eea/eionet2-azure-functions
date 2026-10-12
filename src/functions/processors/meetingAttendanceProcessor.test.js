@@ -30,6 +30,7 @@ jest.mock('../lib/helpers/userHelper', () => ({
 jest.mock('../lib/helpers/utils', () => ({
   parseJoinMeetingId: jest.fn(),
   isMeetingBeyondRetention: jest.fn(),
+  isMeetingNotFound: jest.requireActual('../lib/helpers/utils').isMeetingNotFound,
   MEETING_RETENTION_DAYS: 60,
 }));
 
@@ -78,6 +79,7 @@ function buildApiGet({
   meetingItem = { fields: { Processed: false, Processedreports: '' } },
   attendanceReportsSuccess = true,
   meetingLookupSuccess = true,
+  meetingLookupError = 'meeting lookup failed',
   participantsLookupSuccess = true,
 }) {
   return jest.fn((url) => {
@@ -92,7 +94,7 @@ function buildApiGet({
       return Promise.resolve({
         success: meetingLookupSuccess,
         data: { value: onlineMeetings },
-        error: meetingLookupSuccess ? undefined : 'meeting lookup failed',
+        error: meetingLookupSuccess ? undefined : meetingLookupError,
       });
     }
 
@@ -334,6 +336,46 @@ describe('meetingAttendanceProcessor', () => {
       undefined,
       undefined,
       'UpdateMeetingParticipants',
+    );
+  });
+
+  test('logs as info (no organiser email) when the lookup returns 404 beyond the 60-day retention window', async () => {
+    utils.isMeetingBeyondRetention.mockReturnValue(true);
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetingLookupSuccess: false,
+        meetingLookupError: { response: { status: 404 } },
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).not.toHaveBeenCalled();
+    expect(logging.info).toHaveBeenCalledWith(
+      baseConfig,
+      'Meeting *ID:2* First EEA-Eionet editorial meeting is no longer available in Microsoft Graph (meeting ended more than 60 days ago). Skipping.',
+      undefined,
+      undefined,
+      'UpdateMeetingParticipants',
+    );
+  });
+
+  test('logs a wrong organiser error when the lookup returns 404 for a recent meeting', async () => {
+    apiGet.mockImplementation(
+      buildApiGet({
+        meetingLookupSuccess: false,
+        meetingLookupError: { response: { status: 404 } },
+      }),
+    );
+
+    await processor.processMeetings(baseConfig);
+
+    expect(logging.error).toHaveBeenCalledWith(
+      baseConfig,
+      'Meeting *ID:2* First EEA-Eionet editorial meeting and organizer test@example.com has wrong organizer specified.',
+      'UpdateMeetingParticipants',
+      undefined,
+      'test@example.com',
     );
   });
 

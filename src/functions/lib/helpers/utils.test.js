@@ -142,6 +142,32 @@ describe('utils', () => {
     });
   });
 
+  describe('isMeetingNotFound', () => {
+    test('returns true for a successful response with no meetings', () => {
+      expect(utils.isMeetingNotFound({ success: true, data: { value: [] } })).toBe(true);
+    });
+
+    test('returns false for a successful response with a meeting', () => {
+      expect(utils.isMeetingNotFound({ success: true, data: { value: [{ id: '1' }] } })).toBe(
+        false,
+      );
+    });
+
+    test('returns true for a 404 response', () => {
+      expect(
+        utils.isMeetingNotFound({ success: false, error: { response: { status: 404 } } }),
+      ).toBe(true);
+    });
+
+    test('returns false for other failures', () => {
+      expect(
+        utils.isMeetingNotFound({ success: false, error: { response: { status: 503 } } }),
+      ).toBe(false);
+      expect(utils.isMeetingNotFound({ success: false, error: 'network error' })).toBe(false);
+      expect(utils.isMeetingNotFound(undefined)).toBe(false);
+    });
+  });
+
   describe('sanitizeError', () => {
     const buildAxiosError = (url) => ({
       isAxiosError: true,

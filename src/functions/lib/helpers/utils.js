@@ -36,6 +36,17 @@ function isMeetingBeyondRetention(meetingEnd, retentionDays = MEETING_RETENTION_
   return endDate < cutoff;
 }
 
+// Graph answers an onlineMeetings lookup that matches nothing with 404
+// ("3004: Specified meeting is not found") rather than an empty list. This also
+// happens for valid meetings created in Outlook/Teams whose onlineMeeting record
+// Graph no longer exposes, so it is not proof of a wrong organiser or code.
+function isMeetingNotFound(response) {
+  if (response?.success) {
+    return !response.data?.value?.length;
+  }
+  return response?.error?.response?.status === 404;
+}
+
 const SENSITIVE_QUERY_PARAMS =
   /([?&](?:key|apikey|api_key|token|access_token|secret|password)=)[^&]*/gi;
 
@@ -67,5 +78,6 @@ module.exports = {
   escapeHtml: escapeHtml,
   isMeetingBeyondRetention: isMeetingBeyondRetention,
   MEETING_RETENTION_DAYS: MEETING_RETENTION_DAYS,
+  isMeetingNotFound: isMeetingNotFound,
   sanitizeError: sanitizeError,
 };

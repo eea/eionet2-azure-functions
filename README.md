@@ -58,7 +58,7 @@ THis is to capture a) Older meetings, which have not been captured by the script
 
     Filters: (Processed = 0 AND MeetingStart <= Current time) OR (Processed = 1 AND MeetingEnd >= (Current time - 12 hours))
 
-**Microsoft Graph 60-day limit:** Microsoft only exposes online meeting data — including the join-code → meeting-id lookup this job relies on — for **60 days** after a meeting. For older meetings the lookup returns an empty result, so their attendance can no longer be retrieved through Graph. When that happens the job logs an informational entry ("no longer available") instead of raising a "wrong organiser" alert, so organisers are not emailed about data that has simply expired. A genuinely misconfigured organiser (recent meeting, no match) and a failed Graph request are still reported distinctly. To keep the internal meeting id usable beyond the 60-day window, the job stores it on the event record (*GraphMeetingId*) the first time it is resolved.
+**Microsoft Graph 60-day limit:** Microsoft only exposes online meeting data — including the join-code → meeting-id lookup this job relies on — for **60 days** after a meeting. For older meetings the lookup finds no meeting (Graph answers `404 NotFound`, "3004: Specified meeting is not found"), so their attendance can no longer be retrieved through Graph. When that happens the job logs an informational entry ("no longer available") instead of raising a "wrong organiser" alert, so organisers are not emailed about data that has simply expired. A genuinely misconfigured organiser (recent meeting, no match) and a failed Graph request are still reported distinctly. To keep the internal meeting id usable beyond the 60-day window, the job stores it on the event record (*GraphMeetingId*) the first time it is resolved.
 
 ### MeetingFields    
 
@@ -69,6 +69,11 @@ This job updates several fields in the "Events list". It runs on all future meet
 This is to generate the "MeetingLink" from the ID for future meetings, and update the figures of participants, registrants and countries based on the "Participants list"
 Updates fields in the Events list *MeetingLink, NoOfParticipants, NoOfRegistered, Countries* based on MeetingJoinId and information from participants list.
 This job can run very freqently
+
+**Meeting not found in Microsoft Graph:** the *onlineMeetings* lookup can return `404 NotFound` ("3004: Specified meeting is not found") even for a valid, future meeting with the correct organiser and Meeting ID. This affects meetings created in Outlook/Teams well in advance: Graph does not keep their online meeting record available indefinitely, and it becomes available again once the organiser opens the meeting. When that happens the job:
+* keeps the existing *MeetingLink*, if one was already generated, and logs an informational entry instead of an error;
+* otherwise reads the join link from the organiser's calendar event, matched by the Meeting ID in the Teams invitation body (requires the *Calendars.Read* application permission);
+* logs the "check the meeting organiser and meeting code" error only when the meeting is not found in the calendar either.
 
     Filters: MeetingStart <= (Current time - 14 weeks)
     

@@ -82,8 +82,22 @@ async function getMeetingJoinInfo(meeting) {
         );
         if (response.success && response.data.value && response.data.value.length > 0) {
           return response.data.value[0];
-        } else if (response.success) {
-          //Graph responded successfully but no meeting matched — genuine
+        } else if (utils.isMeetingNotFound(response)) {
+          //The link generated earlier stays valid, so a missing onlineMeeting
+          //record is not worth an error entry.
+          if (meeting.MeetingLink) {
+            console.log(
+              `Meeting ${meeting.Title} not found in Microsoft Graph onlineMeetings. Keeping the existing meeting link.`,
+            );
+            return undefined;
+          }
+
+          const joinUrl = await getJoinUrlFromCalendar(userId, meeting, joinMeetingId);
+          if (joinUrl) {
+            return { joinUrl: joinUrl };
+          }
+
+          //Neither onlineMeetings nor the organiser's calendar has the meeting:
           //organiser/code mismatch (this path only runs for future meetings,
           //so the 60-day retention window does not apply here).
           await logging.error(
@@ -109,6 +123,41 @@ async function getMeetingJoinInfo(meeting) {
     console.log(err);
     return undefined;
   }
+}
+
+//Microsoft recommends the organiser's calendar event as the authoritative source
+//of the join link when the onlineMeetings record is not available. The event is
+//matched by the Meeting ID in its Teams invitation body, as titles may differ.
+async function getJoinUrlFromCalendar(userId, meeting, joinMeetingId) {
+  const meetingStart = new Date(meeting.Meetingstart),
+    windowStart = new Date(meetingStart.getTime() - 24 * 60 * 60 * 1000),
+    windowEnd = new Date(meetingStart.getTime() + 24 * 60 * 60 * 1000);
+
+  const response = await apiGet(
+    apiConfig.uri +
+      'users/' +
+      userId +
+      '/calendarView?startDateTime=' +
+      windowStart.toISOString() +
+      '&endDateTime=' +
+      windowEnd.toISOString() +
+      '&$top=100&$select=isOrganizer,isCancelled,onlineMeeting,body',
+  );
+  if (!response.success) {
+    return undefined;
+  }
+
+  const event = response.data.value.find(
+    (e) =>
+      e.isOrganizer &&
+      !e.isCancelled &&
+      e.onlineMeeting?.joinUrl &&
+      e.body?.content
+        ?.replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;|\s/g, '')
+        .includes(joinMeetingId),
+  );
+  return event?.onlineMeeting.joinUrl;
 }
 
 //Get participants from the sharepoint list

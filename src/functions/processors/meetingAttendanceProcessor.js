@@ -197,10 +197,9 @@ async function processMeeting(meeting) {
           );
           return false;
         }
-      } else if (meetingResponse.success) {
-        //Graph returned a successful response but no meeting matched the
-        //join id + organiser combination — either retention purge or a
-        //genuine organiser/code mismatch.
+      } else if (utils.isMeetingNotFound(meetingResponse)) {
+        //No meeting matched the join id + organiser combination (empty list
+        //or 404): either retention purge or a genuine organiser/code mismatch.
         if (beyondRetention) {
           await logUnavailable();
         } else {
