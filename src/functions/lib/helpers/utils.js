@@ -30,7 +30,7 @@ function escapeHtml(s = '') {
 function isMeetingBeyondRetention(meetingEnd, retentionDays = MEETING_RETENTION_DAYS) {
   if (!meetingEnd) return false;
   const endDate = new Date(meetingEnd);
-  if (isNaN(endDate.getTime())) return false;
+  if (Number.isNaN(endDate.getTime())) return false;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - retentionDays);
   return endDate < cutoff;

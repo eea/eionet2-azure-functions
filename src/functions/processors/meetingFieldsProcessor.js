@@ -83,30 +83,7 @@ async function getMeetingJoinInfo(meeting) {
         if (response.success && response.data.value && response.data.value.length > 0) {
           return response.data.value[0];
         } else if (utils.isMeetingNotFound(response)) {
-          //The link generated earlier stays valid, so a missing onlineMeeting
-          //record is not worth an error entry.
-          if (meeting.MeetingLink) {
-            console.log(
-              `Meeting ${meeting.Title} not found in Microsoft Graph onlineMeetings. Keeping the existing meeting link.`,
-            );
-            return undefined;
-          }
-
-          const joinUrl = await getJoinUrlFromCalendar(userId, meeting, joinMeetingId);
-          if (joinUrl) {
-            return { joinUrl: joinUrl };
-          }
-
-          //Neither onlineMeetings nor the organiser's calendar has the meeting:
-          //organiser/code mismatch (this path only runs for future meetings,
-          //so the 60-day retention window does not apply here).
-          await logging.error(
-            configuration,
-            `Meeting link for ${meeting.Title} could not be generated. Check that the meeting organiser ${adUser?.mail} and meeting code are correct`,
-            jobName,
-            undefined,
-            adUser?.mail,
-          );
+          return await getMeetingJoinInfoFallback(meeting, userId, joinMeetingId, adUser);
         } else {
           //Generic Microsoft Graph failure — do not blame the organiser.
           await logging.error(
@@ -123,6 +100,35 @@ async function getMeetingJoinInfo(meeting) {
     console.log(err);
     return undefined;
   }
+}
+
+//Handles a meeting missing from Microsoft Graph onlineMeetings.
+async function getMeetingJoinInfoFallback(meeting, userId, joinMeetingId, adUser) {
+  //The link generated earlier stays valid, so a missing onlineMeeting
+  //record is not worth an error entry.
+  if (meeting.MeetingLink) {
+    console.log(
+      `Meeting ${meeting.Title} not found in Microsoft Graph onlineMeetings. Keeping the existing meeting link.`,
+    );
+    return undefined;
+  }
+
+  const joinUrl = await getJoinUrlFromCalendar(userId, meeting, joinMeetingId);
+  if (joinUrl) {
+    return { joinUrl: joinUrl };
+  }
+
+  //Neither onlineMeetings nor the organiser's calendar has the meeting:
+  //organiser/code mismatch (this path only runs for future meetings,
+  //so the 60-day retention window does not apply here).
+  await logging.error(
+    configuration,
+    `Meeting link for ${meeting.Title} could not be generated. Check that the meeting organiser ${adUser?.mail} and meeting code are correct`,
+    jobName,
+    undefined,
+    adUser?.mail,
+  );
+  return undefined;
 }
 
 //Microsoft recommends the organiser's calendar event as the authoritative source

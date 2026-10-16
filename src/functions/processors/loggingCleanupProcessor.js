@@ -48,8 +48,9 @@ async function processLoggingCleanup(config, context) {
       //Oldest first, so a capped run always drains the far end of the backlog.
       .sort((a, b) => new Date(a.fields.Timestamp) - new Date(b.fields.Timestamp));
 
+    const runScope = MAX_RECORDS_PER_RUN ? 'at most ' + MAX_RECORDS_PER_RUN : 'all of them';
     context.log(
-      `Logging cleanup: ${stale.length} of ${logs.length} records older than ${cutoffDate.toISOString()} are eligible for archiving, ${MAX_RECORDS_PER_RUN ? `at most ${MAX_RECORDS_PER_RUN}` : 'all of them'} will be moved in this run.`,
+      `Logging cleanup: ${stale.length} of ${logs.length} records older than ${cutoffDate.toISOString()} are eligible for archiving, ${runScope} will be moved in this run.`,
     );
 
     let archived = 0,
