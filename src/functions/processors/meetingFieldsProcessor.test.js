@@ -2,6 +2,7 @@ const processor = require('./meetingFieldsProcessor');
 
 // Mock all dependencies
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
 }));
 
@@ -26,6 +27,7 @@ jest.mock('../lib/helpers/userHelper', () => ({
 
 jest.mock('../lib/helpers/utils', () => ({
   parseJoinMeetingId: jest.fn(),
+  isMeetingNotFound: jest.requireActual('../lib/helpers/utils').isMeetingNotFound,
 }));
 
 jest.mock('date-and-time', () => ({
@@ -33,6 +35,7 @@ jest.mock('date-and-time', () => ({
 }));
 
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
 }));
 
@@ -968,5 +971,120 @@ describe('meetingFieldsProcessor', () => {
       'UpdateMeetingFields',
       'Unable to retrieve meeting link for First EEA-Eionet editorial meeting. Microsoft Graph request failed.',
     );
+  });
+
+  describe('when the onlineMeetings lookup returns 404', () => {
+    const mockConfig = {
+        MeetingListId: 'meeting-list-id',
+        MeetingParticipantsListId: 'participants-list-id',
+      },
+      mockContext = { log: jest.fn() },
+      futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      calendarJoinUrl = 'https://teams.microsoft.com/l/meetup-join/calendar-link';
+
+    function mockApiGet(meetingFields, calendarEvents) {
+      apiGet.mockImplementation((url) => {
+        if (url.includes('meeting-list-id') && url.includes('items?$expand=fields')) {
+          return Promise.resolve({ success: true, data: { value: [{ fields: meetingFields }] } });
+        }
+        if (url.includes('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq')) {
+          return Promise.resolve({ success: false, error: { response: { status: 404 } } });
+        }
+        if (url.includes('/calendarView?')) {
+          return Promise.resolve({ success: true, data: { value: calendarEvents } });
+        }
+        if (url.includes('participants-list-id') && url.includes('MeetingtitleLookupId eq')) {
+          return Promise.resolve({ success: true, data: { value: [] } });
+        }
+        if (url.includes('items/2') && !url.includes('items?$expand=fields')) {
+          return Promise.resolve({ success: true, data: { fields: { Title: 'Test Meeting' } } });
+        }
+        return Promise.resolve({ success: false, data: null });
+      });
+    }
+
+    beforeEach(() => {
+      userHelper.getLookupADUserId.mockResolvedValue('user-id-123');
+      userHelper.getADUser.mockResolvedValue({ mail: 'organiser@example.com' });
+      utils.parseJoinMeetingId.mockReturnValue('256856969');
+      date.format.mockReturnValue('2022-01-28');
+      apiPatch.mockResolvedValue({ success: true, data: { id: '2' } });
+    });
+
+    test('keeps the existing meeting link without logging an error', async () => {
+      mockApiGet(
+        {
+          ...validMeetingObject.fields,
+          Meetingstart: futureStart,
+          MeetingLink: 'existing-link',
+        },
+        [],
+      );
+
+      const logging = require('../lib/logging');
+      await processor.processMeetings(mockConfig, mockContext);
+
+      expect(apiGet).toHaveBeenCalledWith(
+        expect.stringContaining('onlineMeetings?$filter=joinMeetingIdSettings/JoinMeetingId eq'),
+      );
+      expect(logging.error).not.toHaveBeenCalled();
+      expect(apiGet).not.toHaveBeenCalledWith(expect.stringContaining('/calendarView?'));
+    });
+
+    test('takes the meeting link from the organiser calendar event', async () => {
+      mockApiGet({ ...validMeetingObject.fields, Meetingstart: futureStart }, [
+        {
+          isOrganizer: true,
+          isCancelled: false,
+          onlineMeeting: { joinUrl: 'https://teams.microsoft.com/l/meetup-join/other-link' },
+          body: { content: '<span>Meeting ID: </span><span>111 222 333</span>' },
+        },
+        {
+          isOrganizer: true,
+          isCancelled: false,
+          onlineMeeting: { joinUrl: calendarJoinUrl },
+          body: { content: '<span>Meeting ID: </span><span>256&nbsp;856 969</span>' },
+        },
+      ]);
+
+      const logging = require('../lib/logging');
+      await processor.processMeetings(mockConfig, mockContext);
+
+      expect(logging.error).not.toHaveBeenCalled();
+      expect(apiPatch).toHaveBeenCalledWith(
+        expect.stringContaining('items/2'),
+        expect.objectContaining({
+          fields: expect.objectContaining({ MeetingLink: calendarJoinUrl }),
+        }),
+      );
+    });
+
+    test('logs an organiser-targeted error when the calendar has no matching event', async () => {
+      mockApiGet({ ...validMeetingObject.fields, Meetingstart: futureStart }, [
+        {
+          isOrganizer: false,
+          isCancelled: false,
+          onlineMeeting: { joinUrl: calendarJoinUrl },
+          body: { content: 'Meeting ID: 256 856 969' },
+        },
+      ]);
+
+      const logging = require('../lib/logging');
+      await processor.processMeetings(mockConfig, mockContext);
+
+      expect(logging.error).toHaveBeenCalledWith(
+        mockConfig,
+        'Meeting link for First EEA-Eionet editorial meeting could not be generated. Check that the meeting organiser organiser@example.com and meeting code are correct',
+        'UpdateMeetingFields',
+        undefined,
+        'organiser@example.com',
+      );
+      expect(apiPatch).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          fields: expect.objectContaining({ MeetingLink: expect.anything() }),
+        }),
+      );
+    });
   });
 });

@@ -2,6 +2,7 @@ const processor = require('./reportnet3FlowsProcessor');
 
 // Mock all dependencies
 jest.mock('../lib/logging', () => ({
+  PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
   error: jest.fn(),
   info: jest.fn(),
 }));

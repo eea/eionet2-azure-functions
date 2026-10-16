@@ -54,7 +54,7 @@ async function processUserLastSignIn(config) {
       console.log('No users to update.');
     }
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }

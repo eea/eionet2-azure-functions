@@ -2,6 +2,7 @@ function setupProcessor() {
   jest.resetModules();
 
   jest.doMock('../lib/logging', () => ({
+    PRIORITY: { HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' },
     error: jest.fn(),
   }));
 
@@ -258,6 +259,13 @@ describe('userLastSignInProcessor', () => {
     const result = await processor.processUserLastSignIn(config);
 
     expect(result).toBe(error);
-    expect(logging.error).toHaveBeenCalledWith(config, error, 'UserLastSignIn');
+    expect(logging.error).toHaveBeenCalledWith(
+      config,
+      error,
+      'UserLastSignIn',
+      undefined,
+      undefined,
+      logging.PRIORITY.HIGH,
+    );
   });
 });

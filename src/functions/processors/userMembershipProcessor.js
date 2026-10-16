@@ -28,7 +28,7 @@ async function processUsers(configuration) {
     }
     console.log(`Number of users with AD groups inconsistencies: ${noOfUpdated}`);
   } catch (error) {
-    await logging.error(configuration, error, jobName);
+    await logging.error(configuration, error, jobName, undefined, undefined, logging.PRIORITY.HIGH);
     return error;
   }
 }

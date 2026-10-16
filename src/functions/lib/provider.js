@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getAccessToken } = require('./graphClient');
+const { sanitizeError } = require('./helpers/utils');
 
 async function apiGet(endpoint, skipEncoding, skipConsoleLog = false) {
   const token = await getAccessToken();
@@ -19,7 +20,7 @@ async function apiGet(endpoint, skipEncoding, skipConsoleLog = false) {
       data: response.data,
     };
   } catch (error) {
-    !skipConsoleLog && console.log(JSON.stringify(error));
+    !skipConsoleLog && console.log(JSON.stringify(sanitizeError(error)));
     return {
       success: false,
       error: error,
@@ -42,7 +43,7 @@ async function apiPost(endpoint, data) {
       data: response.data,
     };
   } catch (error) {
-    console.log(JSON.stringify(error));
+    console.log(JSON.stringify(sanitizeError(error)));
     return {
       success: false,
       error: error,
@@ -65,7 +66,7 @@ async function apiPatch(endpoint, data) {
       data: response.data,
     };
   } catch (error) {
-    console.log(JSON.stringify(error));
+    console.log(JSON.stringify(sanitizeError(error)));
     return {
       success: false,
       error: error,
@@ -88,7 +89,7 @@ async function apiDelete(endpoint) {
       data: response.data,
     };
   } catch (error) {
-    console.log(JSON.stringify(error));
+    console.log(JSON.stringify(sanitizeError(error)));
     return {
       success: false,
       error: error,
